@@ -80,5 +80,5 @@ app.put('/api/sales/:id/paid', (req, res) => {
 });
 
 // ── START ────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`✅ GarageBook backend chal raha hai → http://localhost:${PORT}`));
