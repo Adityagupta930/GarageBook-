@@ -80,7 +80,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
   <nav>
     <button onclick="showTab('dashboard')" class="active" id="tab-dashboard">🏠 Home</button>
     <button onclick="showTab('inventory')" id="tab-inventory">📦 Parts List</button>
-    <button onclick="showTab('sale')" id="tab-sale">🛒 Bikri Karo</button>
+    <button onclick="showTab('sale')" id="tab-sale">🛒 Bikri</button>
     <button onclick="showTab('udhaar')" id="tab-udhaar">📋 Udhaar</button>
     <button onclick="showTab('history')" id="tab-history">🕓 Purani Bikri</button>
   </nav>
@@ -94,7 +94,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
       <div class="card green"><span>Aaj ki Kamai (Cash + Online)</span><h2 id="d-income">₹0</h2></div>
       <div class="card blue"><span>Total Udhaar Baaki</span><h2 id="d-udhaar">₹0</h2></div>
       <div class="card orange"><span>Aaj Kitne Saman Bika</span><h2 id="d-count">0</h2></div>
-      <div class="card red"><span>Kam Stock Wale Parts</span><h2 id="d-lowstock">0</h2></div>
+      <div class="card red"><span>Kam Stock Parts</span><h2 id="d-lowstock">0</h2></div>
     </div>
     <div class="section-header">
       <h3>Aaj ki Bikri</h3>
@@ -109,12 +109,12 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
   <!-- PARTS LIST -->
   <section id="inventory" class="tab">
     <div class="form-box">
-      <h3>Naya Part Jodo</h3>
+      <h3>Naya Part</h3>
       <div class="form-row">
         <input id="i-name" placeholder="Part ka naam (jaise Brake Pad)"/>
         <input id="i-stock" type="number" placeholder="Kitna hai (ginti)" min="0"/>
         <input id="i-price" type="number" placeholder="Bikri ka daam (₹)" min="0"/>
-        <button class="btn" onclick="addItem()">➕ Jodo</button>
+        <button class="btn" onclick="addItem()">➕ Add</button>
       </div>
     </div>
     <table>
@@ -126,7 +126,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
   <!-- SALE -->
   <section id="sale" class="tab">
     <div class="form-box">
-      <h3>Nai Bikri Likho</h3>
+      <h3>Bikri Likho</h3>
       <div class="form-row">
         <select id="s-item" onchange="onItemSelect()">
           <option value="">-- Part chunno --</option>
@@ -143,7 +143,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
         </select>
         <input id="s-customer" placeholder="Grahak ka naam"/>
         <input id="s-phone" placeholder="Phone number (optional)"/>
-        <button class="btn" onclick="recordSale()">✅ Bikri Likho</button>
+        <button class="btn" onclick="recordSale()">✅ Save</button>
       </div>
     </div>
   </section>
@@ -167,8 +167,8 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
         <option value="online">Sirf Online</option>
         <option value="udhaar">Sirf Udhaar</option>
       </select>
-      <button class="btn" onclick="renderHistory()">🔍 Dhundo</button>
-      <button class="btn btn-secondary" onclick="clearHistory()">✖ Hatao</button>
+      <button class="btn" onclick="renderHistory()">🔍 Search</button>
+      <button class="btn btn-secondary" onclick="clearHistory()">✖ Reset</button>
     </div>
     <table>
       <thead><tr><th>Tarikh</th><th>Part</th><th>Ginti</th><th>Rakam</th><th>Bhugtan</th><th>Grahak</th></tr></thead>
@@ -257,8 +257,8 @@ async function renderInventory() {
         <td>${item.stock}${item.stock <= 3 ? ' ⚠️ Kam hai' : ''}</td>
         <td>₹${item.price}</td>
         <td>
-          <button class="btn-sm btn-edit" onclick="startEdit(${item.id},${item.stock},${item.price})">✏️ Badlo</button>
-          <button class="btn-sm btn-delete" onclick="deleteItem(${item.id},'${item.name}')">🗑️ Hatao</button>
+          <button class="btn-sm btn-edit" onclick="startEdit(${item.id},${item.stock},${item.price})">✏️ Edit</button>
+          <button class="btn-sm btn-delete" onclick="deleteItem(${item.id},'${item.name}')">🗑️ Delete</button>
         </td>
       </tr>`).join('');
 }
@@ -269,7 +269,7 @@ function startEdit(id, stock, price) {
   cells[1].innerHTML = `<input class="edit-input" id="e-stock-${id}" value="${stock}" type="number" min="0"/>`;
   cells[2].innerHTML = `<input class="edit-input" id="e-price-${id}" value="${price}" type="number" min="0"/>`;
   cells[3].innerHTML = `
-    <button class="btn-sm btn-save" onclick="saveEdit(${id})">💾 Save Karo</button>
+    <button class="btn-sm btn-save" onclick="saveEdit(${id})">💾 Save</button>
     <button class="btn-sm btn-cancel" onclick="renderInventory()">✖ Wapas</button>`;
 }
 
