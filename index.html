@@ -8,13 +8,11 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Segoe UI',sans-serif;background:#f0f2f5;color:#222;min-height:100vh}
 
-/* TOAST */
 #toast-container{position:fixed;top:16px;right:16px;z-index:9999;display:flex;flex-direction:column;gap:8px}
 .toast{padding:10px 18px;border-radius:8px;color:#fff;font-size:.9rem;box-shadow:0 4px 12px rgba(0,0,0,.2);animation:slideIn .3s ease}
 .toast.success{background:#27ae60}.toast.error{background:#e74c3c}.toast.info{background:#2980b9}
 @keyframes slideIn{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
 
-/* HEADER */
 header{background:#1a1a2e;color:#fff;padding:14px 20px;position:sticky;top:0;z-index:100}
 header h1{font-size:1.2rem;margin-bottom:10px}
 nav{display:flex;flex-wrap:wrap;gap:4px}
@@ -24,13 +22,11 @@ nav button:hover,nav button.active{background:#e94560;color:#fff}
 main{padding:20px;max-width:1100px;margin:auto}
 .tab{display:none}.tab.active{display:block}
 
-/* CARDS */
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:22px}
 .card{padding:18px;border-radius:10px;color:#fff}
 .card span{font-size:.82rem;opacity:.9}.card h2{font-size:1.7rem;margin-top:5px}
 .green{background:#27ae60}.blue{background:#2980b9}.orange{background:#e67e22}.red{background:#e74c3c}
 
-/* FORM BOX */
 .form-box{background:#fff;padding:18px;border-radius:10px;margin-bottom:18px;box-shadow:0 2px 8px rgba(0,0,0,.07)}
 .form-box h3{margin-bottom:12px;color:#444;font-size:1rem}
 .form-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
@@ -41,38 +37,32 @@ main{padding:20px;max-width:1100px;margin:auto}
 .btn-secondary{background:#555}.btn-secondary:hover{background:#333}
 .btn-export{background:#8e44ad}.btn-export:hover{background:#6c3483}
 
-/* TABLE */
 table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.07)}
 th{background:#1a1a2e;color:#fff;padding:10px 13px;text-align:left;font-size:.82rem}
 td{padding:9px 13px;border-bottom:1px solid #f0f0f0;font-size:.88rem}
 tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
 
-/* BADGES */
 .badge{padding:3px 9px;border-radius:20px;font-size:.75rem;font-weight:600}
 .badge-cash{background:#d5f5e3;color:#1e8449}.badge-online{background:#d6eaf8;color:#1a5276}
 .badge-udhaar{background:#fdebd0;color:#a04000}.badge-paid{background:#d5f5e3;color:#1e8449}
 
-/* BUTTONS */
 .btn-sm{padding:4px 9px;border:none;border-radius:5px;cursor:pointer;font-size:.78rem;margin-right:3px}
 .btn-edit{background:#3498db;color:#fff}.btn-delete{background:#e74c3c;color:#fff}
 .btn-paid{background:#27ae60;color:#fff}.btn-view{background:#8e44ad;color:#fff}
 .btn-save{background:#27ae60;color:#fff}.btn-cancel{background:#95a5a6;color:#fff}
 
-/* INLINE EDIT */
 .edit-input{padding:4px 7px;border:1px solid #3498db;border-radius:4px;font-size:.85rem;width:80px}
-
-/* LOW STOCK */
 .low-stock td:nth-child(2){color:#e74c3c;font-weight:bold}
 
-/* MODAL */
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200}
 .modal.hidden{display:none}
 .modal-box{background:#fff;padding:22px;border-radius:12px;width:90%;max-width:660px;max-height:82vh;overflow-y:auto}
 .modal-box h3{margin-bottom:12px}
 
-/* SECTION HEADER */
 .section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px}
 .section-header h3{color:#333;font-size:1rem}
+
+.loader{text-align:center;padding:20px;color:#aaa;font-size:.9rem}
 
 @media(max-width:600px){
   nav button{padding:6px 8px;font-size:.75rem}
@@ -112,7 +102,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
     </div>
     <table>
       <thead><tr><th>Item</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Customer</th></tr></thead>
-      <tbody id="d-tbody"></tbody>
+      <tbody id="d-tbody"><tr><td colspan="5" class="loader">Loading...</td></tr></tbody>
     </table>
   </section>
 
@@ -129,7 +119,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
     </div>
     <table>
       <thead><tr><th>Item</th><th>Stock</th><th>Price (₹)</th><th>Action</th></tr></thead>
-      <tbody id="inv-tbody"></tbody>
+      <tbody id="inv-tbody"><tr><td colspan="4" class="loader">Loading...</td></tr></tbody>
     </table>
   </section>
 
@@ -160,12 +150,10 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
 
   <!-- UDHAAR -->
   <section id="udhaar" class="tab">
-    <div class="section-header">
-      <h3>📋 Udhaar Bahi (Pending)</h3>
-    </div>
+    <div class="section-header"><h3>📋 Udhaar Bahi (Pending)</h3></div>
     <table>
       <thead><tr><th>Customer</th><th>Phone</th><th>Total Baaki</th><th>Action</th></tr></thead>
-      <tbody id="u-tbody"></tbody>
+      <tbody id="u-tbody"><tr><td colspan="4" class="loader">Loading...</td></tr></tbody>
     </table>
   </section>
 
@@ -184,7 +172,7 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
     </div>
     <table>
       <thead><tr><th>Date</th><th>Item</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Customer</th></tr></thead>
-      <tbody id="h-tbody"></tbody>
+      <tbody id="h-tbody"><tr><td colspan="6" class="loader">Loading...</td></tr></tbody>
     </table>
   </section>
 
@@ -203,17 +191,25 @@ tr:last-child td{border-bottom:none}tr:hover td{background:#fafafa}
 </div>
 
 <script>
-// ── DB ──────────────────────────────────────────────────────────
-const DB = {
-  get: k => JSON.parse(localStorage.getItem(k) || '[]'),
-  set: (k, v) => localStorage.setItem(k, JSON.stringify(v))
-};
-const getInv   = () => DB.get('inv');
-const getSales = () => DB.get('sales');
-const saveInv  = d  => DB.set('inv', d);
-const saveSales= d  => DB.set('sales', d);
+const API = 'http://localhost:3001/api';
 
-// ── TOAST ───────────────────────────────────────────────────────
+// ── HELPERS ─────────────────────────────────────────────────────
+async function api(path, method = 'GET', body) {
+  try {
+    const res = await fetch(API + path, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Server error');
+    return data;
+  } catch (e) {
+    toast(e.message, 'error');
+    throw e;
+  }
+}
+
 function toast(msg, type = 'success') {
   const el = document.createElement('div');
   el.className = `toast ${type}`;
@@ -222,42 +218,37 @@ function toast(msg, type = 'success') {
   setTimeout(() => el.remove(), 3000);
 }
 
+const localDate = iso => {
+  const d = new Date(iso);
+  return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
+};
+const todayStr = () => new Date().toLocaleDateString('en-CA');
+
 // ── TABS ────────────────────────────────────────────────────────
 function showTab(name) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   document.getElementById(name).classList.add('active');
   document.getElementById('tab-' + name).classList.add('active');
-  const fn = {dashboard:renderDashboard, inventory:renderInventory, sale:populateSaleDrop, udhaar:renderUdhaar, history:renderHistory};
+  const fn = { dashboard: renderDashboard, inventory: renderInventory, sale: populateSaleDrop, udhaar: renderUdhaar, history: renderHistory };
   fn[name]?.();
 }
 
-// ── UTILS ───────────────────────────────────────────────────────
-const localDate = iso => {
-  const d = new Date(iso);
-  return `${d.getDate().toString().padStart(2,'0')}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getFullYear()}`;
-};
-const todayStr = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
-
 // ── INVENTORY ───────────────────────────────────────────────────
-function addItem() {
+async function addItem() {
   const name  = document.getElementById('i-name').value.trim();
   const stock = parseInt(document.getElementById('i-stock').value);
   const price = parseFloat(document.getElementById('i-price').value);
   if (!name || isNaN(stock) || isNaN(price) || stock < 0 || price < 0)
     return toast('Sab fields sahi se bharo!', 'error');
-  const inv = getInv();
-  if (inv.find(i => i.name.toLowerCase() === name.toLowerCase()))
-    return toast('Yeh item pehle se hai!', 'error');
-  inv.push({ id: Date.now(), name, stock, price });
-  saveInv(inv);
-  renderInventory();
-  ['i-name','i-stock','i-price'].forEach(id => document.getElementById(id).value = '');
+  await api('/inventory', 'POST', { name, stock, price });
   toast(`"${name}" add ho gaya!`);
+  ['i-name','i-stock','i-price'].forEach(id => document.getElementById(id).value = '');
+  renderInventory();
 }
 
-function renderInventory() {
-  const inv = getInv();
+async function renderInventory() {
+  const inv = await api('/inventory');
   document.getElementById('inv-tbody').innerHTML = inv.length === 0
     ? '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:20px">Koi item nahi. Upar se add karo.</td></tr>'
     : inv.map(item => `
@@ -266,50 +257,43 @@ function renderInventory() {
         <td>${item.stock}${item.stock <= 3 ? ' ⚠️' : ''}</td>
         <td>₹${item.price}</td>
         <td>
-          <button class="btn-sm btn-edit" onclick="startEdit(${item.id})">✏️ Edit</button>
-          <button class="btn-sm btn-delete" onclick="deleteItem(${item.id})">🗑️ Delete</button>
+          <button class="btn-sm btn-edit" onclick="startEdit(${item.id},${item.stock},${item.price})">✏️ Edit</button>
+          <button class="btn-sm btn-delete" onclick="deleteItem(${item.id},'${item.name}')">🗑️ Delete</button>
         </td>
       </tr>`).join('');
 }
 
-function startEdit(id) {
-  const item = getInv().find(i => i.id === id);
-  const row  = document.getElementById('row-' + id);
-  row.innerHTML = `
-    <td>${item.name}</td>
-    <td><input class="edit-input" id="e-stock-${id}" value="${item.stock}" type="number" min="0"/></td>
-    <td><input class="edit-input" id="e-price-${id}" value="${item.price}" type="number" min="0"/></td>
-    <td>
-      <button class="btn-sm btn-save" onclick="saveEdit(${id})">💾 Save</button>
-      <button class="btn-sm btn-cancel" onclick="renderInventory()">✖</button>
-    </td>`;
+function startEdit(id, stock, price) {
+  const row = document.getElementById('row-' + id);
+  const cells = row.querySelectorAll('td');
+  cells[1].innerHTML = `<input class="edit-input" id="e-stock-${id}" value="${stock}" type="number" min="0"/>`;
+  cells[2].innerHTML = `<input class="edit-input" id="e-price-${id}" value="${price}" type="number" min="0"/>`;
+  cells[3].innerHTML = `
+    <button class="btn-sm btn-save" onclick="saveEdit(${id})">💾 Save</button>
+    <button class="btn-sm btn-cancel" onclick="renderInventory()">✖</button>`;
 }
 
-function saveEdit(id) {
-  const inv   = getInv();
-  const item  = inv.find(i => i.id === id);
+async function saveEdit(id) {
   const stock = parseInt(document.getElementById('e-stock-' + id).value);
   const price = parseFloat(document.getElementById('e-price-' + id).value);
   if (isNaN(stock) || isNaN(price)) return toast('Sahi value daalo!', 'error');
-  item.stock = stock; item.price = price;
-  saveInv(inv); renderInventory();
-  toast(`"${item.name}" update ho gaya!`);
+  await api(`/inventory/${id}`, 'PUT', { stock, price });
+  toast('Update ho gaya!');
+  renderInventory();
 }
 
-function deleteItem(id) {
-  const item = getInv().find(i => i.id === id);
-  if (!item) return;
-  // inline confirm via toast + undo pattern — simple delete with toast
-  saveInv(getInv().filter(i => i.id !== id));
+async function deleteItem(id, name) {
+  await api(`/inventory/${id}`, 'DELETE');
+  toast(`"${name}" delete ho gaya`, 'info');
   renderInventory();
-  toast(`"${item.name}" delete ho gaya`, 'info');
 }
 
 // ── SALE ────────────────────────────────────────────────────────
-function populateSaleDrop() {
-  const sel = document.getElementById('s-item');
-  sel.innerHTML = '<option value="">-- Item chunno --</option>' +
-    getInv().map(i => `<option value="${i.id}" data-price="${i.price}" data-stock="${i.stock}">${i.name} (Stock: ${i.stock})</option>`).join('');
+async function populateSaleDrop() {
+  const inv = await api('/inventory');
+  document.getElementById('s-item').innerHTML =
+    '<option value="">-- Item chunno --</option>' +
+    inv.map(i => `<option value="${i.id}" data-price="${i.price}" data-stock="${i.stock}">${i.name} (Stock: ${i.stock})</option>`).join('');
 }
 
 function onItemSelect() {
@@ -329,39 +313,31 @@ function toggleCustomer() {
   document.getElementById('s-customer').placeholder = isUdhaar ? 'Customer naam (zaroori!)' : 'Customer naam (optional)';
 }
 
-function recordSale() {
-  const itemId   = parseInt(document.getElementById('s-item').value);
+async function recordSale() {
+  const sel      = document.getElementById('s-item');
+  const item_id  = parseInt(sel.value);
+  const item_name= sel.selectedOptions[0]?.text?.split(' (')[0] || '';
   const qty      = parseInt(document.getElementById('s-qty').value);
   const amount   = parseFloat(document.getElementById('s-amount').value);
   const payment  = document.getElementById('s-payment').value;
   const customer = document.getElementById('s-customer').value.trim();
   const phone    = document.getElementById('s-phone').value.trim();
 
-  if (!itemId || !qty || isNaN(amount)) return toast('Item, qty aur amount bharo!', 'error');
+  if (!item_id || !qty || isNaN(amount)) return toast('Item, qty aur amount bharo!', 'error');
   if (payment === 'udhaar' && !customer) return toast('Udhaar ke liye customer naam zaroori!', 'error');
 
-  const inv  = getInv();
-  const item = inv.find(i => i.id === itemId);
-  if (!item) return toast('Item nahi mila!', 'error');
-  if (item.stock < qty) return toast(`Sirf ${item.stock} stock bacha hai!`, 'error');
-
-  item.stock -= qty;
-  saveInv(inv);
-
-  const sales = getSales();
-  sales.push({ id: Date.now(), itemId, itemName: item.name, qty, amount, payment,
-    customer: customer || 'Walk-in', phone, date: new Date().toISOString(), udhaarpaid: payment !== 'udhaar' });
-  saveSales(sales);
-
-  toast(`✅ ${item.name} ×${qty} = ₹${amount} (${payment.toUpperCase()})`);
-  ['s-item','s-price','s-amount','s-customer','s-phone'].forEach(id => document.getElementById(id).value = '');
+  await api('/sales', 'POST', { item_id, item_name, qty, amount, payment, customer, phone });
+  toast(`✅ ${item_name} ×${qty} = ₹${amount} (${payment.toUpperCase()})`);
+  ['s-price','s-amount','s-customer','s-phone'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('s-item').value = '';
   document.getElementById('s-qty').value = '1';
   document.getElementById('s-payment').value = 'cash';
 }
 
 // ── UDHAAR ──────────────────────────────────────────────────────
-function renderUdhaar() {
-  const pending = getSales().filter(s => s.payment === 'udhaar' && !s.udhaarpaid);
+async function renderUdhaar() {
+  const sales = await api('/sales');
+  const pending = sales.filter(s => s.payment === 'udhaar' && !s.udhaar_paid);
   const map = {};
   pending.forEach(s => {
     const k = s.customer + '||' + s.phone;
@@ -380,38 +356,35 @@ function renderUdhaar() {
       </tr>`).join('');
 }
 
-function viewUdhaar(customer, phone) {
-  const sales = getSales().filter(s => s.payment === 'udhaar' && s.customer === customer && s.phone === phone);
+async function viewUdhaar(customer, phone) {
+  const sales = await api('/sales');
+  const filtered = sales.filter(s => s.payment === 'udhaar' && s.customer === customer && s.phone === phone);
   document.getElementById('modal-title').textContent = `Udhaar: ${customer}${phone ? ' ('+phone+')' : ''}`;
-  document.getElementById('modal-tbody').innerHTML = sales.map(s => `
+  document.getElementById('modal-tbody').innerHTML = filtered.map(s => `
     <tr>
       <td>${localDate(s.date)}</td>
-      <td>${s.itemName} ×${s.qty}</td>
+      <td>${s.item_name} ×${s.qty}</td>
       <td>₹${s.amount}</td>
-      <td><span class="badge ${s.udhaarpaid ? 'badge-paid' : 'badge-udhaar'}">${s.udhaarpaid ? 'Paid' : 'Baaki'}</span></td>
-      <td>${!s.udhaarpaid ? `<button class="btn-sm btn-paid" onclick="markPaid(${s.id})">✅ Paid</button>` : ''}</td>
+      <td><span class="badge ${s.udhaar_paid ? 'badge-paid' : 'badge-udhaar'}">${s.udhaar_paid ? 'Paid' : 'Baaki'}</span></td>
+      <td>${!s.udhaar_paid ? `<button class="btn-sm btn-paid" onclick="markPaid(${s.id},'${customer}','${phone}')">✅ Paid</button>` : ''}</td>
     </tr>`).join('');
   document.getElementById('modal').classList.remove('hidden');
 }
 
-function markPaid(id) {
-  const sales = getSales();
-  const sale  = sales.find(s => s.id === id);
-  if (!sale) return;
-  sale.udhaarpaid = true;
-  saveSales(sales);
-  viewUdhaar(sale.customer, sale.phone);
+async function markPaid(id, customer, phone) {
+  await api(`/sales/${id}/paid`, 'PUT');
+  toast('Paid mark ho gaya!');
+  viewUdhaar(customer, phone);
   renderUdhaar();
-  toast(`₹${sale.amount} paid mark ho gaya!`);
 }
 
 function closeModal() { document.getElementById('modal').classList.add('hidden'); }
 
 // ── HISTORY ─────────────────────────────────────────────────────
-function renderHistory() {
+async function renderHistory() {
   const dateF = document.getElementById('h-date').value;
   const payF  = document.getElementById('h-payment').value;
-  let sales   = getSales().slice().reverse();
+  let sales   = await api('/sales');
   if (dateF) sales = sales.filter(s => new Date(s.date).toLocaleDateString('en-CA') === dateF);
   if (payF)  sales = sales.filter(s => s.payment === payF);
   document.getElementById('h-tbody').innerHTML = sales.length === 0
@@ -419,7 +392,7 @@ function renderHistory() {
     : sales.map(s => `
       <tr>
         <td>${localDate(s.date)}</td>
-        <td>${s.itemName}</td>
+        <td>${s.item_name}</td>
         <td>${s.qty}</td>
         <td>₹${s.amount}</td>
         <td><span class="badge badge-${s.payment}">${s.payment.toUpperCase()}</span></td>
@@ -434,14 +407,14 @@ function clearHistory() {
 }
 
 // ── DASHBOARD ───────────────────────────────────────────────────
-function renderDashboard() {
+async function renderDashboard() {
   const today = todayStr();
-  const sales = getSales();
-  const todaySales = sales.filter(s => new Date(s.date).toLocaleDateString('en-CA') === today);
+  const [sales, inv] = await Promise.all([api('/sales'), api('/inventory')]);
 
-  const income = todaySales.filter(s => s.payment !== 'udhaar').reduce((sum, s) => sum + s.amount, 0);
-  const totalUdhaar = sales.filter(s => s.payment === 'udhaar' && !s.udhaarpaid).reduce((sum, s) => sum + s.amount, 0);
-  const lowStock = getInv().filter(i => i.stock <= 3).length;
+  const todaySales  = sales.filter(s => new Date(s.date).toLocaleDateString('en-CA') === today);
+  const income      = todaySales.filter(s => s.payment !== 'udhaar').reduce((sum, s) => sum + s.amount, 0);
+  const totalUdhaar = sales.filter(s => s.payment === 'udhaar' && !s.udhaar_paid).reduce((sum, s) => sum + s.amount, 0);
+  const lowStock    = inv.filter(i => i.stock <= 3).length;
 
   document.getElementById('d-income').textContent   = `₹${income.toFixed(2)}`;
   document.getElementById('d-udhaar').textContent   = `₹${totalUdhaar.toFixed(2)}`;
@@ -450,22 +423,20 @@ function renderDashboard() {
 
   document.getElementById('d-tbody').innerHTML = todaySales.length === 0
     ? '<tr><td colspan="5" style="text-align:center;color:#aaa;padding:20px">Aaj koi bikri nahi</td></tr>'
-    : todaySales.slice().reverse().map(s => `
+    : todaySales.map(s => `
       <tr>
-        <td>${s.itemName}</td><td>${s.qty}</td><td>₹${s.amount}</td>
+        <td>${s.item_name}</td><td>${s.qty}</td><td>₹${s.amount}</td>
         <td><span class="badge badge-${s.payment}">${s.payment.toUpperCase()}</span></td>
         <td>${s.customer}</td>
       </tr>`).join('');
 }
 
 // ── EXPORT CSV ──────────────────────────────────────────────────
-function exportCSV() {
-  const sales = getSales();
+async function exportCSV() {
+  const sales = await api('/sales');
   if (!sales.length) return toast('Koi data nahi export karne ke liye', 'info');
   const rows = [['Date','Item','Qty','Amount','Payment','Customer','Udhaar Paid']];
-  sales.forEach(s => rows.push([
-    localDate(s.date), s.itemName, s.qty, s.amount, s.payment, s.customer, s.udhaarpaid ? 'Yes' : 'No'
-  ]));
+  sales.forEach(s => rows.push([localDate(s.date), s.item_name, s.qty, s.amount, s.payment, s.customer, s.udhaar_paid ? 'Yes' : 'No']));
   const csv  = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a    = document.createElement('a');
