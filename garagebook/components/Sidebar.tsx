@@ -3,22 +3,23 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const links = [
-  { href: '/',          icon: '▦',  label: 'Dashboard' },
-  { href: '/inventory', icon: '📦', label: 'Products' },
-  { href: '/sale',      icon: '🛒', label: 'New Sale' },
-  { href: '/bill',      icon: '🧾', label: 'Bill' },
-  { href: '/credit',    icon: '📋', label: 'Credit' },
-  { href: '/history',   icon: '🕓', label: 'History' },
-  { href: '/admin',     icon: '📊', label: 'Reports' },
+  { href: '/',          icon: '▦',  label: 'Dashboard',  ownerOnly: false },
+  { href: '/inventory', icon: '📦', label: 'Products',   ownerOnly: false },
+  { href: '/sale',      icon: '🛒', label: 'New Sale',   ownerOnly: false },
+  { href: '/bill',      icon: '🧾', label: 'Bill',       ownerOnly: false },
+  { href: '/credit',    icon: '📋', label: 'Credit',     ownerOnly: true  },
+  { href: '/history',   icon: '🕓', label: 'History',    ownerOnly: true  },
+  { href: '/admin',     icon: '📊', label: 'Reports',    ownerOnly: true  },
 ];
 
-interface Props { onClose?: () => void; }
+interface Props { onClose?: () => void; isOwner: boolean; }
 
-export default function Sidebar({ onClose }: Props) {
+export default function Sidebar({ onClose, isOwner }: Props) {
   const path = usePathname();
+  const visible = links.filter(l => isOwner || !l.ownerOnly);
+
   return (
     <aside className="sidebar">
-      {/* Logo */}
       <div className="sidebar-logo">
         <div className="logo-row">
           <div className="logo-icon">🔧</div>
@@ -29,10 +30,9 @@ export default function Sidebar({ onClose }: Props) {
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="sidebar-nav">
         <div className="sidebar-section-label">Menu</div>
-        {links.map(l => (
+        {visible.map(l => (
           <Link key={l.href} href={l.href}
             onClick={onClose}
             className={`sidebar-link ${path === l.href ? 'active' : ''}`}>
@@ -42,13 +42,12 @@ export default function Sidebar({ onClose }: Props) {
         ))}
       </nav>
 
-      {/* User footer */}
       <div className="sidebar-footer">
         <div className="sidebar-user">
-          <div className="sidebar-avatar">A</div>
+          <div className="sidebar-avatar">{isOwner ? 'O' : 'S'}</div>
           <div className="sidebar-user-info">
-            <p>Admin</p>
-            <span>Shop Owner</span>
+            <p>{isOwner ? 'Owner' : 'Staff'}</p>
+            <span>{isOwner ? 'Full Access' : 'Sales Only'}</span>
           </div>
         </div>
       </div>
