@@ -107,7 +107,7 @@ export default function AdminPage() {
   return (
     <div>
       <div className="flex gap-2 mb-5">
-        {tabs.map(t => (
+        {visibleTabs.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t.key ? 'bg-[#e94560] text-white' : 'bg-white text-gray-600 hover:bg-gray-100'}`}>
             {t.label}
@@ -235,6 +235,35 @@ export default function AdminPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+      {/* ERROR LOG */}
+      {tab === 'errorlog' && isOwner && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text2)' }}>{errorLog.length} errors logged</span>
+            <button className="btn-gray text-sm" onClick={() => { clearErrorLog(); setErrorLog([]); toast('Log cleared', 'info'); }}>
+              🗑️ Clear Log
+            </button>
+          </div>
+          {errorLog.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text3)', fontSize: '14px' }}>✅ Koi error nahi</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {errorLog.map((e, i) => (
+                <div key={i} style={{
+                  background: 'var(--surface)', border: '1px solid #fca5a5',
+                  borderRadius: '8px', padding: '10px 14px', fontSize: '12px',
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <span style={{ color: '#dc2626', fontWeight: 600 }}>{e.msg}</span>
+                    <span style={{ color: 'var(--text3)' }}>{e.url} · {new Date(e.ts).toLocaleTimeString()}</span>
+                  </div>
+                  {e.stack && <pre style={{ color: 'var(--text3)', fontSize: '11px', overflow: 'auto', maxHeight: '80px', margin: 0 }}>{e.stack.split('\n').slice(0, 3).join('\n')}</pre>}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
