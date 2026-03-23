@@ -1,13 +1,21 @@
 import Database from 'better-sqlite3';
 import path from 'path';
 
+// Use __dirname-equivalent for reliable path in Next.js
 const DB_PATH = path.join(process.cwd(), 'garagebook.db');
 
-// Singleton — reuse same connection across hot reloads in dev
-const globalForDb = global as typeof global & { _db?: Database.Database };
+declare global { var _db: Database.Database | undefined; }
 
-const db: Database.Database = globalForDb._db ?? new Database(DB_PATH);
-if (process.env.NODE_ENV !== 'production') globalForDb._db = db;
+const db: Database.Database = global._db ?? new Database(DB_PATH, {
+  verbose: process.env.NODE_ENV === 'development' ? console.log : undefined,
+});
+
+// Persist across hot reloads in dev only
+if (process.env.NODE_ENV !== 'production') global._db = db;
+
+// WAL mode for better concurrent read performance
+db.pragma('journal_mode = WAL');
+db.pragma('foreign_keys = ON');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS inventory (
