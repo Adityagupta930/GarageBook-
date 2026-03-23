@@ -127,7 +127,7 @@ export default function BillPage() {
             <option value="">-- Part Select Karo --</option>
             {inv.map(i => (
               <option key={i.id} value={i.id} disabled={i.stock === 0}>
-                {i.name} — ₹{i.price} (Stock: {i.stock}){i.stock === 0 ? ' OUT' : ''}
+                {i.name}{i.company ? ` (${i.company})` : ''} — ₹{i.price} (Stock: {i.stock}){i.stock === 0 ? ' OUT' : ''}
               </option>
             ))}
           </select>
