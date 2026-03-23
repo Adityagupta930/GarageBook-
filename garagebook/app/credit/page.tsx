@@ -24,7 +24,12 @@ export default function CreditPage() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [load]);
 
   const pending = sales.filter(s => s.payment === 'udhaar' && !s.udhaar_paid);
   const groups  = Object.values(
@@ -44,7 +49,7 @@ export default function CreditPage() {
     });
     if (!res.ok) return toast('Update nahi hua', 'error');
     toast('✅ Paid mark ho gaya!');
-    load();
+    await load(); // await so modal also refreshes
   }
 
   const modalSales = modal
@@ -96,7 +101,9 @@ export default function CreditPage() {
             <table className="gb-table">
               <thead><tr><th>Date</th><th>Part</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>
               <tbody>
-                {modalSales.map(s => (
+                {modalSales.length === 0
+                  ? <tr><td colSpan={5} className="text-center text-gray-400 py-4">Koi record nahi</td></tr>
+                  : modalSales.map(s => (
                   <tr key={s.id}>
                     <td className="text-xs text-gray-500">{fmtDate(s.date)}</td>
                     <td>{s.item_name} ×{s.qty}</td>

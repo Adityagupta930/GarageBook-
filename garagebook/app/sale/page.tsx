@@ -14,13 +14,18 @@ export default function SalePage() {
   const [phone, setPhone]       = useState('');
   const [saving, setSaving]     = useState(false);
 
-  const loadInv = () => fetch('/api/inventory').then(r => r.json()).then(setInv);
+  const loadInv = async () => {
+    const data = await fetch('/api/inventory').then(r => r.json());
+    setInv(data);
+    return data as InventoryItem[];
+  };
+
   useEffect(() => { loadInv(); }, []);
 
   function onItemSelect(id: string) {
     setItemId(id);
     const item = inv.find(i => i.id === +id);
-    if (item) { setPrice(String(item.price)); setAmount(String(+qty * item.price)); }
+    if (item) { setPrice(String(item.price)); setAmount((+qty * item.price).toFixed(2)); }
     else { setPrice(''); setAmount(''); }
   }
 
@@ -39,17 +44,27 @@ export default function SalePage() {
     if (item && +qty > item.stock) return toast(`Sirf ${item.stock} stock bacha hai!`, 'error');
 
     setSaving(true);
-    const res = await fetch('/api/sales', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ item_id: +itemId, item_name: item?.name, qty: +qty, amount: +amount, payment, customer: customer.trim(), phone: phone.trim() }),
-    });
-    setSaving(false);
-    const data = await res.json();
-    if (!res.ok) return toast(data.error, 'error');
-    toast(`✅ ${item?.name} ×${qty} = ₹${amount} (${payment.toUpperCase()})`);
-    setItemId(''); setQty('1'); setPrice(''); setAmount(''); setCustomer(''); setPhone(''); setPayment('cash');
-    loadInv();
+    try {
+      const res = await fetch('/api/sales', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_id: +itemId, item_name: item?.name,
+          qty: +qty, amount: +amount,
+          payment, customer: customer.trim(), phone: phone.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return toast(data.error, 'error');
+      toast(`✅ ${item?.name} ×${qty} = ₹${amount} (${payment.toUpperCase()})`);
+      // Reset form
+      setItemId(''); setQty('1'); setPrice(''); setAmount('');
+      setCustomer(''); setPhone(''); setPayment('cash');
+      // Reload fresh inventory so stock is updated
+      await loadInv();
+    } finally {
+      setSaving(false);
+    }
   }
 
   const selectedItem = inv.find(i => i.id === +itemId);
@@ -85,7 +100,8 @@ export default function SalePage() {
           <option value="online">📱 Online</option>
           <option value="udhaar">📋 Credit (Udhaar)</option>
         </select>
-        <input className="gb-input" placeholder={payment === 'udhaar' ? 'Customer naam (zaroori!) *' : 'Customer naam (optional)'}
+        <input className="gb-input"
+          placeholder={payment === 'udhaar' ? 'Customer naam (zaroori!) *' : 'Customer naam (optional)'}
           value={customer} onChange={e => setCustomer(e.target.value)} />
         <input className="gb-input" placeholder="Phone (optional)" value={phone} onChange={e => setPhone(e.target.value)} />
         <button className="btn" onClick={recordSale} disabled={saving}>

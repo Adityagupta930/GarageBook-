@@ -29,7 +29,13 @@ export default function Dashboard() {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    // Refresh when user comes back to this tab
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [load]);
 
   const today = todayStr();
   const filterSales = (s: Sale) => {
@@ -41,13 +47,13 @@ export default function Dashboard() {
     return true;
   };
 
-  const filtered  = sales.filter(filterSales);
-  const income    = filtered.filter(s => s.payment !== 'udhaar').reduce((a, s) => a + s.amount, 0);
-  const credit    = sales.filter(s => s.payment === 'udhaar' && !s.udhaar_paid).reduce((a, s) => a + s.amount, 0);
-  const lowStock  = inv.filter(i => i.stock <= 3).length;
+  const filtered = sales.filter(filterSales);
+  const income   = filtered.filter(s => s.payment !== 'udhaar').reduce((a, s) => a + s.amount, 0);
+  const credit   = sales.filter(s => s.payment === 'udhaar' && !s.udhaar_paid).reduce((a, s) => a + s.amount, 0);
+  const lowStock = inv.filter(i => i.stock <= 3).length;
 
   function exportCSV() {
-    if (!sales.length) return;
+    if (!sales.length) return toast('Koi data nahi');
     const rows = [['Date', 'Part', 'Qty', 'Amount', 'Payment', 'Customer', 'Credit Paid']];
     sales.forEach(s => rows.push([fmtDate(s.date), s.item_name, String(s.qty), String(s.amount), s.payment, s.customer, s.udhaar_paid ? 'Yes' : 'No']));
     const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
@@ -56,6 +62,8 @@ export default function Dashboard() {
     a.download = `GarageBook_${today}.csv`;
     a.click();
   }
+
+  function toast(msg: string) { alert(msg); } // fallback only for exportCSV
 
   return (
     <div>
