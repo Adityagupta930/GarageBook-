@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import type { InventoryItem } from '@/types';
 
@@ -14,13 +14,12 @@ export default function SalePage() {
   const [phone, setPhone]       = useState('');
   const [saving, setSaving]     = useState(false);
 
-  const loadInv = async () => {
-    const data = await fetch('/api/inventory').then(r => r.json());
+  const loadInv = useCallback(async () => {
+    const data: InventoryItem[] = await fetch('/api/inventory').then(r => r.json());
     setInv(data);
-    return data as InventoryItem[];
-  };
+  }, []);
 
-  useEffect(() => { loadInv(); }, []);
+  useEffect(() => { loadInv(); }, [loadInv]);
 
   function onItemSelect(id: string) {
     setItemId(id);
