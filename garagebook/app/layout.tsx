@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
+import { Inter } from 'next/font/google';
 import './globals.css';
 import ShellClient from '@/components/ShellClient';
 import ToastContainer from '@/components/Toast';
 import { initDb } from '@/lib/db';
+
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: 'GarageBook — Auto Parts Shop',
@@ -13,7 +16,7 @@ initDb().catch(console.error);
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning className={inter.variable}>
       <body>
         <ShellClient>{children}</ShellClient>
         <ToastContainer />
