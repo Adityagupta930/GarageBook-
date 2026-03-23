@@ -71,11 +71,11 @@ export default function Dashboard() {
     <div>
       {/* Stat Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
-        <StatCard label="Revenue" value={fmtCurrency(income)} color="green" sub={range === 'today' ? 'Aaj' : range === 'week' ? 'Last 7 days' : 'Last 30 days'} />
-        <StatCard label="Net Profit" value={fmtCurrency(profit)} color="blue" sub="After cost" />
-        <StatCard label="Credit Pending" value={fmtCurrency(credit)} color="orange" sub="Unpaid udhaar" />
-        <StatCard label="Low Stock" value={lowStock} color="red" sub={outStock > 0 ? `${outStock} out of stock` : 'Items ≤ 3'} />
-        <StatCard label="Total Sales" value={filtered.length} color="purple" sub="Transactions" />
+        <StatCard label="Revenue" value={fmtCurrency(income)} color="green" sub={range === 'today' ? 'Today' : range === 'week' ? 'Last 7 days' : 'Last 30 days'} icon="💰" />
+        <StatCard label="Net Profit" value={fmtCurrency(profit)} color="blue" sub="After cost price" icon="📈" />
+        <StatCard label="Credit Pending" value={fmtCurrency(credit)} color="orange" sub="Unpaid udhaar" icon="📋" />
+        <StatCard label="Low Stock" value={lowStock} color="red" sub={outStock > 0 ? `${outStock} out of stock` : 'Items ≤ 3'} icon="⚠️" />
+        <StatCard label="Total Sales" value={filtered.length} color="purple" sub="Transactions" icon="🛒" />
       </div>
 
       {/* Toolbar */}
