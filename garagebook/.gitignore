@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SQLite DB — backup regularly via CSV export
+# garagebook.db  ← uncomment to exclude from git
+
+# Agents
+AGENTS.md
+CLAUDE.md
