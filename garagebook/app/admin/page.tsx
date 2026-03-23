@@ -4,6 +4,7 @@ import { toast } from '@/components/Toast';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
 import { fmtDate, fmtCurrency } from '@/lib/utils';
 import type { Customer, Return, ReportSummary, DailyReport, TopPart } from '@/types';
+import { DailyBarChart, TopPartsChart } from '@/components/Charts';
 
 type Tab = 'reports' | 'customers' | 'returns';
 
@@ -90,9 +91,6 @@ export default function AdminPage() {
     { key: 'returns',   label: '↩️ Returns' },
   ];
 
-  // Bar chart max value
-  const maxDaily = daily.length ? Math.max(...daily.map(d => Number(d.total) || 0)) : 1;
-
   return (
     <div>
       <div className="flex gap-2 mb-5">
@@ -138,47 +136,16 @@ export default function AdminPage() {
               {/* Daily Bar Chart */}
               {daily.length > 0 && (
                 <div className="form-box">
-                  <h3>Last 30 Days — Daily Sales</h3>
-                  <div className="flex items-end gap-1 h-40 overflow-x-auto pb-2">
-                    {[...daily].reverse().map(d => {
-                      const pct = maxDaily > 0 ? (Number(d.total) / maxDaily) * 100 : 0;
-                      return (
-                        <div key={d.day} className="flex flex-col items-center gap-1 flex-shrink-0" style={{ minWidth: '28px' }}>
-                          <span className="text-xs text-gray-500 font-medium" style={{ fontSize: '9px' }}>
-                            ₹{Number(d.total) >= 1000 ? (Number(d.total)/1000).toFixed(1)+'k' : Number(d.total).toFixed(0)}
-                          </span>
-                          <div
-                            className="w-5 rounded-t bg-[#e94560] hover:bg-red-700 transition-colors cursor-default"
-                            style={{ height: `${Math.max(pct, 2)}%` }}
-                            title={`${d.day}: ₹${Number(d.total).toFixed(2)}`}
-                          />
-                          <span className="text-gray-400" style={{ fontSize: '8px', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
-                            {d.day.slice(5)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <h3>Last 30 Days — Daily Sales (Revenue vs Profit)</h3>
+                  <DailyBarChart data={daily} />
                 </div>
               )}
 
-              {/* Top Parts */}
+              {/* Top Parts Chart + Table */}
               {topParts.length > 0 && (
                 <div className="form-box">
-                  <h3>🏆 Top 10 Best Selling Parts</h3>
-                  <table className="gb-table">
-                    <thead><tr><th>#</th><th>Part</th><th>Qty Sold</th><th>Revenue</th></tr></thead>
-                    <tbody>
-                      {topParts.map((p, i) => (
-                        <tr key={p.item_name}>
-                          <td className="text-gray-400 font-mono">{i + 1}</td>
-                          <td className="font-medium">{p.item_name}</td>
-                          <td><span className="badge bg-blue-100 text-blue-800">{p.total_qty}</span></td>
-                          <td className="font-semibold text-green-700">{fmtCurrency(Number(p.total_amount))}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <h3>🏆 Top Selling Parts</h3>
+                  <TopPartsChart data={topParts} />
                 </div>
               )}
             </>
