@@ -12,18 +12,20 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (body.action === 'addstock') {
       const qty = Number(body.qty);
       if (!qty || qty <= 0) return apiError('Valid qty daalo');
-      db.prepare('UPDATE inventory SET stock = stock + ? WHERE id = ?').run(qty, id);
-      return apiOk(db.prepare('SELECT * FROM inventory WHERE id = ?').get(id));
+      await db.execute({ sql: 'UPDATE inventory SET stock = stock + ? WHERE id = ?', args: [qty, id] });
+      const r = await db.execute({ sql: 'SELECT * FROM inventory WHERE id = ?', args: [id] });
+      return apiOk(r.rows[0]);
     }
 
     const { stock, price, buy_price, company } = body;
     if (stock == null || isNaN(+stock)) return apiError('Valid stock daalo');
     if (price == null || isNaN(+price)) return apiError('Valid price daalo');
 
-    const info = db.prepare('UPDATE inventory SET stock = ?, price = ?, buy_price = ?, company = ? WHERE id = ?')
-      .run(+stock, +price, buy_price != null ? +buy_price : 0, company?.trim() ?? '', id);
-
-    if (info.changes === 0) return apiError('Part nahi mila', 404);
+    const info = await db.execute({
+      sql: 'UPDATE inventory SET stock = ?, price = ?, buy_price = ?, company = ? WHERE id = ?',
+      args: [+stock, +price, buy_price != null ? +buy_price : 0, company?.trim() ?? '', id],
+    });
+    if (info.rowsAffected === 0) return apiError('Part nahi mila', 404);
     return apiOk({ success: true });
   } catch (e) {
     console.error('[PUT /api/inventory/:id]', e);
@@ -34,8 +36,8 @@ export async function PUT(req: NextRequest, { params }: Params) {
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const info = db.prepare('DELETE FROM inventory WHERE id = ?').run(id);
-    if (info.changes === 0) return apiError('Part nahi mila', 404);
+    const info = await db.execute({ sql: 'DELETE FROM inventory WHERE id = ?', args: [id] });
+    if (info.rowsAffected === 0) return apiError('Part nahi mila', 404);
     return apiOk({ success: true });
   } catch (e) {
     console.error('[DELETE /api/inventory/:id]', e);
