@@ -1,6 +1,6 @@
 // ── Shared (client + server) ─────────────────────────────────────
 
-export const fmtCurrency = (n: number) => `₹${n.toFixed(2)}`;
+export const fmtCurrency = (n: number | null | undefined) => `₹${(n ?? 0).toFixed(2)}`;
 
 export const todayStr = () => new Date().toLocaleDateString('en-CA');
 

@@ -42,11 +42,11 @@ export interface Return {
 }
 
 export interface ReportSummary {
-  totalSales: number;
-  cashSales: number;
-  onlineSales: number;
-  creditSales: number;
-  profit: number;
-  totalItems: number;
-  pendingCredit: number;
+  totalSales: number | null;
+  cashSales: number | null;
+  onlineSales: number | null;
+  creditSales: number | null;
+  profit: number | null;
+  totalItems: number | null;
+  pendingCredit: number | null;
 }
