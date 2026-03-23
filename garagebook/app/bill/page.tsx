@@ -6,6 +6,8 @@ import type { InventoryItem } from '@/types';
 
 interface BillItem { item_id: number; item_name: string; qty: number; price: number; }
 
+const SHOP_KEY = 'gb_shop_name';
+
 export default function BillPage() {
   const [inv, setInv]           = useState<InventoryItem[]>([]);
   const [items, setItems]       = useState<BillItem[]>([]);
@@ -17,8 +19,23 @@ export default function BillPage() {
   const [shopName, setShopName] = useState('GarageBook Auto Parts');
   const [saving, setSaving]     = useState(false);
 
-  const loadInv = () => fetch('/api/inventory').then(r => r.json()).then(setInv);
-  useEffect(() => { loadInv(); }, []);
+  const loadInv = async () => {
+    const data: InventoryItem[] = await fetch('/api/inventory').then(r => r.json());
+    setInv(data);
+    return data;
+  };
+
+  useEffect(() => {
+    loadInv();
+    // Restore saved shop name
+    const saved = localStorage.getItem(SHOP_KEY);
+    if (saved) setShopName(saved);
+  }, []);
+
+  function onShopNameChange(val: string) {
+    setShopName(val);
+    localStorage.setItem(SHOP_KEY, val);
+  }
 
   function addItem() {
     const item = inv.find(i => i.id === +selId);
@@ -52,9 +69,8 @@ export default function BillPage() {
         }).then(async r => { if (!r.ok) throw new Error((await r.json()).error); })
       ));
       toast('✅ Bill save ho gaya!');
-      // Clear bill after save
       setItems([]); setCustomer(''); setPhone(''); setPayment('cash');
-      loadInv();
+      await loadInv(); // await so stock is fresh
     } catch (e: unknown) {
       toast(e instanceof Error ? e.message : 'Bill save nahi hua', 'error');
     } finally {
@@ -103,13 +119,14 @@ export default function BillPage() {
       <div className="form-box">
         <h3>Shop Details</h3>
         <input className="gb-input w-full" placeholder="Shop naam" value={shopName}
-          onChange={e => setShopName(e.target.value)} />
+          onChange={e => onShopNameChange(e.target.value)} />
       </div>
 
       <div className="form-box">
         <h3>Customer Details</h3>
         <div className="flex flex-wrap gap-2">
-          <input className="gb-input" placeholder={payment === 'udhaar' ? 'Customer naam *' : 'Customer naam (optional)'}
+          <input className="gb-input"
+            placeholder={payment === 'udhaar' ? 'Customer naam *' : 'Customer naam (optional)'}
             value={customer} onChange={e => setCustomer(e.target.value)} />
           <input className="gb-input" placeholder="Phone (optional)" value={phone} onChange={e => setPhone(e.target.value)} />
           <select className="gb-input" value={payment} onChange={e => setPayment(e.target.value as typeof payment)}>

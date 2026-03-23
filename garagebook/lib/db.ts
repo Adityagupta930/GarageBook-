@@ -6,9 +6,7 @@ const DB_PATH = path.join(process.cwd(), 'garagebook.db');
 
 declare global { var _db: Database.Database | undefined; }
 
-const db: Database.Database = global._db ?? new Database(DB_PATH, {
-  verbose: process.env.NODE_ENV === 'development' ? console.log : undefined,
-});
+const db: Database.Database = global._db ?? new Database(DB_PATH);
 
 // Persist across hot reloads in dev only
 if (process.env.NODE_ENV !== 'production') global._db = db;

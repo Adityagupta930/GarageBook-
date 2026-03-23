@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import StatCard from '@/components/StatCard';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
+import { toast } from '@/components/Toast';
 import { fmtDate, fmtCurrency, todayStr } from '@/lib/utils';
 import type { Sale, InventoryItem } from '@/types';
 
@@ -53,7 +54,7 @@ export default function Dashboard() {
   const lowStock = inv.filter(i => i.stock <= 3).length;
 
   function exportCSV() {
-    if (!sales.length) return toast('Koi data nahi');
+    if (!sales.length) return toast('Koi data nahi', 'info');
     const rows = [['Date', 'Part', 'Qty', 'Amount', 'Payment', 'Customer', 'Credit Paid']];
     sales.forEach(s => rows.push([fmtDate(s.date), s.item_name, String(s.qty), String(s.amount), s.payment, s.customer, s.udhaar_paid ? 'Yes' : 'No']));
     const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
@@ -61,9 +62,8 @@ export default function Dashboard() {
     a.href    = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
     a.download = `GarageBook_${today}.csv`;
     a.click();
+    toast('CSV download ho gaya!');
   }
-
-  function toast(msg: string) { alert(msg); } // fallback only for exportCSV
 
   return (
     <div>

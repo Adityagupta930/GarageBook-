@@ -25,7 +25,12 @@ export default function HistoryPage() {
     }
   }, [date, payment]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [load]);
 
   const total = sales.reduce((a, s) => a + s.amount, 0);
 
