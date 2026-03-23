@@ -52,7 +52,7 @@ export default function Dashboard() {
     sales.forEach(s => rows.push([fmtDate(s.date), s.item_name, String(s.qty), String(s.amount), s.payment, s.customer, s.udhaar_paid ? 'Yes' : 'No']));
     const csv = rows.map(r => r.map(v => `"${v}"`).join(',')).join('\n');
     const a   = document.createElement('a');
-    a.href    = URL.createObjectURL(new Blob(['\uFEFF' + csv, { type: 'text/csv;charset=utf-8' }]));
+    a.href    = URL.createObjectURL(new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }));
     a.download = `GarageBook_${today}.csv`;
     a.click();
   }
