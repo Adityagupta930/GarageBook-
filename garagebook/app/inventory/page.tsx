@@ -19,9 +19,9 @@ export default function InventoryPage() {
     setError('');
     try {
       const data = await fetch(`/api/inventory${search ? `?search=${encodeURIComponent(search)}` : ''}`).then(r => r.json());
-      setItems(data);
+      setItems(Array.isArray(data) ? data : []);
     } catch {
-      setError('Parts load nahi hue. Server check karo.');
+      setError('Parts load nahi hue. Internet check karo.');
     } finally {
       setLoading(false);
     }
@@ -82,6 +82,9 @@ export default function InventoryPage() {
   const f = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [field]: e.target.value }));
 
+  const outCount = items.filter(i => Number(i.stock) === 0).length;
+  const lowCount = items.filter(i => Number(i.stock) > 0 && Number(i.stock) <= 3).length;
+
   return (
     <div>
       {/* Add Form */}
@@ -98,12 +101,14 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* Search */}
-      <div className="flex gap-2 mb-3">
+      {/* Search + Stats */}
+      <div className="flex flex-wrap gap-2 mb-3 items-center">
         <input className="gb-input max-w-xs" placeholder="🔍 Search parts..." value={search}
           onChange={e => setSearch(e.target.value)} />
         {search && <button className="btn-gray text-sm px-3 rounded-lg" onClick={() => setSearch('')}>✖</button>}
-        <span className="text-xs text-gray-400 self-center">{items.length} parts</span>
+        <span className="text-xs text-gray-400 ml-auto">{items.length} parts</span>
+        {outCount > 0 && <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">❌ {outCount} Out of Stock</span>}
+        {lowCount > 0 && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium">⚠️ {lowCount} Low Stock</span>}
       </div>
 
       {/* Table */}
@@ -123,12 +128,14 @@ export default function InventoryPage() {
            error   ? <ErrorRow cols={6} msg={error} /> :
            items.length === 0 ? <EmptyRow cols={6} msg={search ? 'Koi part nahi mila' : 'Koi part nahi. Upar se add karo.'} /> :
            items.map(item => {
-            const e = editing[item.id];
-            const low = item.stock <= 3;
+            const e   = editing[item.id];
+            const qty = Number(item.stock);
+            const out = qty === 0;
+            const low = qty > 0 && qty <= 3;
             return (
-              <tr key={item.id} className={low ? 'bg-red-50' : ''}>
-                <td className={low ? 'text-red-600 font-semibold' : ''}>
-                  {item.name}{low ? ' ⚠️' : ''}
+              <tr key={item.id} className={out ? 'bg-red-50' : low ? 'bg-orange-50' : ''}>
+                <td className={out ? 'text-red-600 font-semibold' : low ? 'text-orange-600 font-semibold' : 'font-medium'}>
+                  {item.name}
                 </td>
                 <td>
                   {e
@@ -141,7 +148,9 @@ export default function InventoryPage() {
                   {e
                     ? <input className="gb-input w-20" type="number" min="0" value={e.stock}
                         onChange={ev => setEditing(p => ({ ...p, [item.id]: { ...p[item.id], stock: ev.target.value } }))} />
-                    : item.stock
+                    : <span className={`font-semibold ${out ? 'text-red-600' : low ? 'text-orange-500' : 'text-gray-800'}`}>
+                        {item.stock}{out ? ' ❌' : low ? ' ⚠️' : ''}
+                      </span>
                   }
                 </td>
                 <td>
@@ -155,7 +164,7 @@ export default function InventoryPage() {
                   {e
                     ? <input className="gb-input w-24" type="number" min="0" value={e.buy_price}
                         onChange={ev => setEditing(p => ({ ...p, [item.id]: { ...p[item.id], buy_price: ev.target.value } }))} />
-                    : `₹${item.buy_price}`
+                    : <span className="text-gray-500">₹{item.buy_price}</span>
                   }
                 </td>
                 <td className="flex gap-1 flex-wrap">
