@@ -16,12 +16,12 @@ export async function PUT(req: NextRequest, { params }: Params) {
       return apiOk(db.prepare('SELECT * FROM inventory WHERE id = ?').get(id));
     }
 
-    const { stock, price, buy_price } = body;
+    const { stock, price, buy_price, company } = body;
     if (stock == null || isNaN(+stock)) return apiError('Valid stock daalo');
     if (price == null || isNaN(+price)) return apiError('Valid price daalo');
 
-    const info = db.prepare('UPDATE inventory SET stock = ?, price = ?, buy_price = ? WHERE id = ?')
-      .run(+stock, +price, buy_price != null ? +buy_price : 0, id);
+    const info = db.prepare('UPDATE inventory SET stock = ?, price = ?, buy_price = ?, company = ? WHERE id = ?')
+      .run(+stock, +price, buy_price != null ? +buy_price : 0, company?.trim() ?? '', id);
 
     if (info.changes === 0) return apiError('Part nahi mila', 404);
     return apiOk({ success: true });

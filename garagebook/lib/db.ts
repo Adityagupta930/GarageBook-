@@ -17,6 +17,12 @@ if (process.env.NODE_ENV !== 'production') global._db = db;
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 
+// Migration — add company column if not exists (safe to run multiple times)
+const invCols = db.prepare('PRAGMA table_info(inventory)').all() as { name: string }[];
+if (!invCols.find(c => c.name === 'company')) {
+  db.prepare("ALTER TABLE inventory ADD COLUMN company TEXT NOT NULL DEFAULT ''").run();
+}
+
 db.exec(`
   CREATE TABLE IF NOT EXISTS inventory (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,6 +30,7 @@ db.exec(`
     stock      INTEGER NOT NULL DEFAULT 0,
     price      REAL    NOT NULL DEFAULT 0,
     buy_price  REAL    NOT NULL DEFAULT 0,
+    company    TEXT    NOT NULL DEFAULT '',
     created_at TEXT    DEFAULT (datetime('now','localtime'))
   );
 

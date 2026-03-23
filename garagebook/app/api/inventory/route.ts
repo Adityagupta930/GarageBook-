@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, stock, price, buy_price } = body;
+    const { name, stock, price, buy_price, company } = body;
     if (!name?.trim()) return apiError('Part naam zaroori hai');
     if (stock == null || isNaN(+stock) || +stock < 0) return apiError('Valid stock daalo');
     if (price == null || isNaN(+price) || +price < 0) return apiError('Valid selling price daalo');
@@ -28,10 +28,10 @@ export async function POST(req: NextRequest) {
     if (exists) return apiError('Ye part pehle se exist karta hai', 409);
 
     const result = db.prepare(
-      'INSERT INTO inventory (name, stock, price, buy_price) VALUES (?, ?, ?, ?)'
-    ).run(name.trim(), +stock, +price, +buy_price);
+      'INSERT INTO inventory (name, stock, price, buy_price, company) VALUES (?, ?, ?, ?, ?)'
+    ).run(name.trim(), +stock, +price, +buy_price, company?.trim() || '');
 
-    return apiOk({ id: result.lastInsertRowid, name: name.trim(), stock: +stock, price: +price, buy_price: +buy_price }, 201);
+    return apiOk({ id: result.lastInsertRowid, name: name.trim(), stock: +stock, price: +price, buy_price: +buy_price, company: company?.trim() || '' }, 201);
   } catch (e) {
     console.error('[POST /api/inventory]', e);
     return apiError('Part add karne mein error', 500);

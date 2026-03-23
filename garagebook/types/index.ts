@@ -4,6 +4,7 @@ export interface InventoryItem {
   stock: number;
   price: number;
   buy_price: number;
+  company: string;
   created_at: string;
 }
 
