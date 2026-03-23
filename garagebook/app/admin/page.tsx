@@ -6,8 +6,10 @@ import { fmtDate, fmtCurrency } from '@/lib/utils';
 import type { Customer, Return, ReportSummary, DailyReport, TopPart } from '@/types';
 import { DailyBarChart, TopPartsChart } from '@/components/Charts';
 import ConfirmModal from '@/components/ConfirmModal';
+import { useRole } from '@/hooks/useRole';
+import { getErrorLog, clearErrorLog } from '@/hooks/useErrorLogger';
 
-type Tab = 'reports' | 'customers' | 'returns';
+type Tab = 'reports' | 'customers' | 'returns' | 'errorlog';
 
 export default function AdminPage() {
   const [tab, setTab]             = useState<Tab>('reports');
@@ -22,6 +24,8 @@ export default function AdminPage() {
   const [cForm, setCForm]         = useState({ name: '', phone: '', address: '' });
   const [rForm, setRForm]         = useState({ item_name: '', qty: '', amount: '', reason: '' });
   const [confirmCust, setConfirmCust] = useState<{ id: number; name: string } | null>(null);
+  const { isOwner } = useRole();
+  const [errorLog, setErrorLog] = useState(() => getErrorLog());
 
   const loadCustomers = useCallback(async () => {
     setCLoading(true);
@@ -91,11 +95,14 @@ export default function AdminPage() {
     await loadReturns();
   }
 
-  const tabs: { key: Tab; label: string }[] = [
+  const tabs: { key: Tab; label: string; ownerOnly?: boolean }[] = [
     { key: 'reports',   label: '📊 Reports' },
     { key: 'customers', label: '👥 Customers' },
     { key: 'returns',   label: '↩️ Returns' },
+    { key: 'errorlog',  label: '🛠️ Error Log', ownerOnly: true },
   ];
+
+  const visibleTabs = tabs.filter(t => !t.ownerOnly || isOwner);
 
   return (
     <div>

@@ -5,6 +5,7 @@ import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
 import { toast } from '@/components/Toast';
 import { Sparkline } from '@/components/Charts';
 import { fmtDate, fmtCurrency, todayStr } from '@/lib/utils';
+import { useRole } from '@/hooks/useRole';
 import type { Sale, InventoryItem } from '@/types';
 
 type Range = 'today' | 'week' | 'month';
@@ -15,6 +16,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
   const [range, setRange]     = useState<Range>('today');
+  const { isOwner } = useRole();
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -62,6 +64,35 @@ export default function Dashboard() {
     const key = d.toLocaleDateString('en-CA');
     return sales.filter(s => s.date.startsWith(key) && s.payment !== 'udhaar').reduce((a, s) => a + Number(s.amount), 0);
   });
+
+  // ── Data Insights ──────────────────────────────────────────────
+  const topItem = (() => {
+    const counts: Record<string, number> = {};
+    sales.forEach(s => { counts[s.item_name] = (counts[s.item_name] || 0) + Number(s.qty); });
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return top ? top[0] : null;
+  })();
+
+  const thisWeekProfit = (() => {
+    const w = new Date(); w.setDate(w.getDate() - 7);
+    return sales.filter(s => new Date(s.date.replace(' ', 'T')) >= w)
+      .reduce((a, s) => a + ((Number(s.amount) / Number(s.qty)) - Number(s.buy_price)) * Number(s.qty), 0);
+  })();
+  const lastWeekProfit = (() => {
+    const w1 = new Date(); w1.setDate(w1.getDate() - 14);
+    const w2 = new Date(); w2.setDate(w2.getDate() - 7);
+    return sales.filter(s => { const d = new Date(s.date.replace(' ', 'T')); return d >= w1 && d < w2; })
+      .reduce((a, s) => a + ((Number(s.amount) / Number(s.qty)) - Number(s.buy_price)) * Number(s.qty), 0);
+  })();
+  const profitTrend = lastWeekProfit > 0 ? ((thisWeekProfit - lastWeekProfit) / lastWeekProfit) * 100 : 0;
+
+  const insights: { icon: string; msg: string; color: string }[] = [];
+  if (topItem) insights.push({ icon: '🔥', msg: `"${topItem}" sabse zyada bik raha hai`, color: '#ea580c' });
+  if (profitTrend < -10) insights.push({ icon: '📉', msg: `Is hafte profit ${Math.abs(profitTrend).toFixed(0)}% kam hai`, color: '#dc2626' });
+  if (profitTrend > 10)  insights.push({ icon: '📈', msg: `Is hafte profit ${profitTrend.toFixed(0)}% zyada hai!`, color: '#16a34a' });
+  const outOfStock = inv.filter(i => Number(i.stock) === 0);
+  if (outOfStock.length > 0) insights.push({ icon: '⚠️', msg: `${outOfStock.length} part${outOfStock.length > 1 ? 's' : ''} out of stock`, color: '#d97706' });
+  if (credit > 5000) insights.push({ icon: '💸', msg: `₹${credit.toFixed(0)} udhaar pending — collect karo`, color: '#7c3aed' });
 
   function exportCSV() {
     if (!sales.length) return toast('Koi data nahi', 'info');
@@ -111,6 +142,24 @@ export default function Dashboard() {
           <span style={{ color: 'var(--text2)' }}>💵 Cash: <b style={{ color: '#16a34a' }}>{fmtCurrency(filtered.filter(s => s.payment === 'cash').reduce((a, s) => a + Number(s.amount), 0))}</b></span>
           <span style={{ color: 'var(--text2)' }}>📱 Online: <b style={{ color: '#2563eb' }}>{fmtCurrency(filtered.filter(s => s.payment === 'online').reduce((a, s) => a + Number(s.amount), 0))}</b></span>
           <span style={{ color: 'var(--text2)' }}>📋 Credit: <b style={{ color: '#ea580c' }}>{fmtCurrency(filtered.filter(s => s.payment === 'udhaar').reduce((a, s) => a + Number(s.amount), 0))}</b></span>
+        </div>
+      )}
+
+      {/* Data Insights Panel */}
+      {!loading && insights.length > 0 && isOwner && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '10px', padding: '12px 16px', marginBottom: '16px' }}>
+          <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '8px' }}>🧠 Smart Insights</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+            {insights.map((ins, i) => (
+              <span key={i} style={{
+                fontSize: '12px', fontWeight: 500, padding: '4px 12px',
+                borderRadius: '20px', background: ins.color + '18', color: ins.color,
+                border: `1px solid ${ins.color}30`,
+              }}>
+                {ins.icon} {ins.msg}
+              </span>
+            ))}
+          </div>
         </div>
       )}
 

@@ -1,10 +1,24 @@
 'use client';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from '@/components/Toast';
+import { fuzzyMatch } from '@/lib/utils';
+import { enqueueOfflineSale, useOfflineSync } from '@/hooks/useOfflineSync';
 import type { InventoryItem } from '@/types';
+
+const FREQ_KEY = 'gb_freq_items';
+
+function getFreq(): Record<number, number> {
+  try { return JSON.parse(localStorage.getItem(FREQ_KEY) || '{}'); } catch { return {}; }
+}
+function bumpFreq(id: number) {
+  const f = getFreq(); f[id] = (f[id] || 0) + 1;
+  localStorage.setItem(FREQ_KEY, JSON.stringify(f));
+}
 
 export default function SalePage() {
   const [inv, setInv]           = useState<InventoryItem[]>([]);
+  const [search, setSearch]     = useState('');
+  const [showDrop, setShowDrop] = useState(false);
   const [itemId, setItemId]     = useState('');
   const [qty, setQty]           = useState('1');
   const [price, setPrice]       = useState('');
@@ -13,6 +27,10 @@ export default function SalePage() {
   const [customer, setCustomer] = useState('');
   const [phone, setPhone]       = useState('');
   const [saving, setSaving]     = useState(false);
+  const [success, setSuccess]   = useState(false);
+  const searchRef               = useRef<HTMLInputElement>(null);
+
+  const { pendingCount } = useOfflineSync();
 
   const loadInv = useCallback(async () => {
     const data: InventoryItem[] = await fetch('/api/inventory').then(r => r.json());
@@ -21,19 +39,36 @@ export default function SalePage() {
 
   useEffect(() => { loadInv(); }, [loadInv]);
 
-  const baseAmount = price ? (+qty * +price) : 0;
-  const finalAmount = Math.max(0, baseAmount - +discount).toFixed(2);
+  // Keyboard shortcut: Enter to submit when form is filled
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && e.ctrlKey) recordSale();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  });
 
-  function onItemSelect(id: string) {
-    setItemId(id);
+  const freq = getFreq();
+  const filtered = inv
+    .filter(i => i.stock > 0)
+    .filter(i => !search || fuzzyMatch(i.name + ' ' + (i.company || '') + ' ' + (i.sku || ''), search))
+    .sort((a, b) => (freq[b.id] || 0) - (freq[a.id] || 0));
+
+  const selectedItem = inv.find(i => i.id === +itemId);
+  const baseAmount   = price ? (+qty * +price) : 0;
+  const finalAmount  = Math.max(0, baseAmount - +discount).toFixed(2);
+
+  function selectItem(item: InventoryItem) {
+    setItemId(String(item.id));
+    setPrice(String(item.price));
+    setSearch(item.name);
     setDiscount('0');
-    const item = inv.find(i => i.id === +id);
-    if (item) setPrice(String(item.price));
-    else setPrice('');
+    setShowDrop(false);
   }
 
-  function onQtyChange(q: string) {
-    setQty(q);
+  function reset() {
+    setItemId(''); setQty('1'); setPrice(''); setDiscount('0');
+    setCustomer(''); setPhone(''); setPayment('cash'); setSearch('');
   }
 
   async function recordSale() {
@@ -45,68 +80,127 @@ export default function SalePage() {
     if (!item) return toast('Part nahi mila!', 'error');
     if (+qty > item.stock) return toast(`Sirf ${item.stock} stock bacha hai!`, 'error');
 
+    const payload = {
+      item_id: +itemId, item_name: item.name,
+      qty: +qty, amount: +finalAmount,
+      payment, customer: customer.trim() || 'Walk-in', phone: phone.trim(),
+    };
+
+    // ── Optimistic UI ──────────────────────────────────────────
+    setInv(prev => prev.map(i => i.id === +itemId ? { ...i, stock: i.stock - +qty } : i));
+    setSuccess(true);
+    setTimeout(() => setSuccess(false), 800);
+    bumpFreq(+itemId);
+    reset();
     setSaving(true);
+
     try {
-      const res = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          item_id: +itemId, item_name: item.name,
-          qty: +qty, amount: +finalAmount,
-          payment, customer: customer.trim(), phone: phone.trim(),
-        }),
+      if (!navigator.onLine) { enqueueOfflineSale(payload); return; }
+      const res  = await fetch('/api/sales', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
-      if (!res.ok) return toast(data.error, 'error');
+      if (!res.ok) {
+        // Rollback optimistic update
+        await loadInv();
+        return toast(data.error || 'Sale save nahi hua', 'error');
+      }
       toast(`✅ ${item.name} ×${qty} = ₹${finalAmount} (${payment.toUpperCase()})`);
-      setItemId(''); setQty('1'); setPrice(''); setDiscount('0');
-      setCustomer(''); setPhone(''); setPayment('cash');
-      await loadInv();
+    } catch {
+      enqueueOfflineSale(payload);
     } finally {
       setSaving(false);
     }
   }
 
-  const selectedItem = inv.find(i => i.id === +itemId);
-
   return (
-    <div className="form-box max-w-2xl">
-      <h3>Naya Sale Darj Karo</h3>
+    <div className={`form-box max-w-2xl${success ? ' success-flash' : ''}`}>
+      <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        Naya Sale Darj Karo
+        {pendingCount > 0 && (
+          <span style={{ fontSize: '11px', background: '#fef9c3', color: '#a16207', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>
+            📴 {pendingCount} pending sync
+          </span>
+        )}
+      </h3>
 
-      {/* Part + Qty */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        <select className="gb-input" value={itemId} onChange={e => onItemSelect(e.target.value)}>
-          <option value="">-- Part Select Karo --</option>
-          {inv.map(i => (
-            <option key={i.id} value={i.id} disabled={i.stock === 0}>
-              {i.name}{i.company ? ` (${i.company})` : ''} — Stock: {i.stock}{i.stock === 0 ? ' ❌ OUT' : ''}
-            </option>
-          ))}
-        </select>
-        <input className="gb-input w-24" type="number" placeholder="Qty" min="1"
-          max={selectedItem?.stock} value={qty} onChange={e => onQtyChange(e.target.value)} />
+      {/* Fuzzy Search + Dropdown */}
+      <div style={{ position: 'relative', marginBottom: '12px' }}>
+        <input
+          ref={searchRef}
+          className="gb-input w-full"
+          placeholder="🔍 Part search karo (naam, SKU, company)..."
+          value={search}
+          onChange={e => { setSearch(e.target.value); setShowDrop(true); setItemId(''); setPrice(''); }}
+          onFocus={() => setShowDrop(true)}
+          autoComplete="off"
+        />
+        {showDrop && search && (
+          <div style={{
+            position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50,
+            background: 'var(--surface)', border: '1px solid var(--border)',
+            borderRadius: '8px', boxShadow: 'var(--shadow-md)',
+            maxHeight: '220px', overflowY: 'auto', marginTop: '4px',
+          }}>
+            {filtered.length === 0 ? (
+              <div style={{ padding: '12px', fontSize: '13px', color: 'var(--text3)', textAlign: 'center' }}>
+                Koi part nahi mila
+              </div>
+            ) : filtered.slice(0, 8).map(i => (
+              <div key={i.id}
+                onClick={() => selectItem(i)}
+                style={{
+                  padding: '9px 14px', cursor: 'pointer', fontSize: '13px',
+                  borderBottom: '1px solid var(--border)',
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  transition: 'background .1s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+              >
+                <span>
+                  {freq[i.id] > 0 && <span style={{ fontSize: '10px', marginRight: '4px' }}>⭐</span>}
+                  <b>{i.name}</b>
+                  {i.company && <span style={{ color: 'var(--text3)', fontSize: '11px' }}> · {i.company}</span>}
+                </span>
+                <span style={{ fontSize: '12px', color: 'var(--text2)' }}>
+                  ₹{i.price} · <span style={{ color: i.stock <= 3 ? '#f97316' : '#16a34a' }}>{i.stock} left</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Click outside to close */}
+        {showDrop && <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setShowDrop(false)} />}
       </div>
 
-      {/* Stock indicator */}
+      {/* Selected item info */}
       {selectedItem && (
-        <div className="flex items-center gap-3 mb-3 text-sm">
-          <span>Stock bacha:
-            <b className={selectedItem.stock === 0 ? 'text-red-600' : selectedItem.stock <= 3 ? 'text-orange-500' : 'text-green-600'}>
-              {' '}{selectedItem.stock}
-            </b>
-          </span>
-          <span className="text-gray-400">|</span>
-          <span>Rate: <b>₹{selectedItem.price}</b></span>
-          <span className="text-gray-400">|</span>
-          <span>Subtotal: <b>₹{baseAmount.toFixed(2)}</b></span>
+        <div style={{
+          background: 'var(--surface2)', border: '1px solid var(--border)',
+          borderRadius: '8px', padding: '10px 14px', marginBottom: '12px',
+          display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '13px',
+        }}>
+          <span>📦 <b>{selectedItem.name}</b></span>
+          <span>Rate: <b style={{ color: 'var(--primary)' }}>₹{selectedItem.price}</b></span>
+          <span>Stock: <b style={{ color: selectedItem.stock <= 3 ? '#f97316' : '#16a34a' }}>{selectedItem.stock}</b></span>
+          {baseAmount > 0 && <span>Subtotal: <b>₹{baseAmount.toFixed(2)}</b></span>}
         </div>
       )}
 
-      {/* Price + Discount + Final */}
+      {/* Qty + Price + Discount + Final */}
       <div className="flex flex-wrap gap-2 mb-3">
-        <div className="flex flex-col gap-1 flex-1 min-w-36">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs text-gray-500">Qty</label>
+          <input className="gb-input w-24" type="number" placeholder="Qty" min="1"
+            max={selectedItem?.stock} value={qty}
+            onChange={e => setQty(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1 flex-1 min-w-28">
           <label className="text-xs text-gray-500">Unit Price ₹</label>
-          <input className="gb-input" type="number" placeholder="Price ₹" value={price} readOnly />
+          <input className="gb-input" type="number" value={price} readOnly
+            style={{ background: 'var(--surface2)' }} />
         </div>
         <div className="flex flex-col gap-1 w-28">
           <label className="text-xs text-gray-500">Discount ₹</label>
@@ -114,8 +208,9 @@ export default function SalePage() {
             value={discount} onChange={e => setDiscount(e.target.value)} />
         </div>
         <div className="flex flex-col gap-1 w-32">
-          <label className="text-xs text-gray-500">Final Amount ₹</label>
-          <input className="gb-input bg-green-50 font-semibold" type="number" value={finalAmount} readOnly />
+          <label className="text-xs text-gray-500">Final ₹</label>
+          <input className="gb-input font-semibold" type="number" value={finalAmount} readOnly
+            style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 700 }} />
         </div>
       </div>
 
@@ -129,9 +224,10 @@ export default function SalePage() {
         <input className="gb-input"
           placeholder={payment === 'udhaar' ? 'Customer naam (zaroori!) *' : 'Customer naam (optional)'}
           value={customer} onChange={e => setCustomer(e.target.value)} />
-        <input className="gb-input" placeholder="Phone (optional)" value={phone} onChange={e => setPhone(e.target.value)} />
-        <button className="btn w-full mt-1" onClick={recordSale} disabled={saving}>
-          {saving ? '⏳ Saving...' : '✅ Sale Save Karo'}
+        <input className="gb-input" placeholder="Phone (optional)"
+          value={phone} onChange={e => setPhone(e.target.value)} />
+        <button className="btn w-full mt-1" onClick={recordSale} disabled={saving || !itemId}>
+          {saving ? '⏳ Saving...' : '✅ Sale Save Karo (Ctrl+Enter)'}
         </button>
       </div>
     </div>

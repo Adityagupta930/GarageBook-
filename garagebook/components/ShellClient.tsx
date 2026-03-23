@@ -5,6 +5,8 @@ import Topbar from './Topbar';
 import { useRole } from '@/hooks/useRole';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useInactivity } from '@/hooks/useInactivity';
+import { useErrorLogger } from '@/hooks/useErrorLogger';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { toast } from '@/components/Toast';
 
 export default function ShellClient({ children }: { children: React.ReactNode }) {
@@ -18,6 +20,8 @@ export default function ShellClient({ children }: { children: React.ReactNode })
 
   useKeyboardShortcuts();
   useInactivity(handleLogout);
+  useErrorLogger();
+  useOfflineSync();
 
   return (
     <div className="app-shell">
