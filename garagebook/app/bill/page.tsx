@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import { fmtDate } from '@/lib/utils';
 import type { InventoryItem } from '@/types';
@@ -16,21 +16,20 @@ export default function BillPage() {
   const [customer, setCustomer] = useState('');
   const [phone, setPhone]       = useState('');
   const [payment, setPayment]   = useState<'cash' | 'online' | 'udhaar'>('cash');
+  const [discount, setDiscount] = useState('0');
   const [shopName, setShopName] = useState('GarageBook Auto Parts');
   const [saving, setSaving]     = useState(false);
 
-  const loadInv = async () => {
+  const loadInv = useCallback(async () => {
     const data: InventoryItem[] = await fetch('/api/inventory').then(r => r.json());
-    setInv(data);
-    return data;
-  };
+    setInv(Array.isArray(data) ? data : []);
+  }, []);
 
   useEffect(() => {
     loadInv();
-    // Restore saved shop name
     const saved = localStorage.getItem(SHOP_KEY);
     if (saved) setShopName(saved);
-  }, []);
+  }, [loadInv]);
 
   function onShopNameChange(val: string) {
     setShopName(val);
@@ -50,27 +49,33 @@ export default function BillPage() {
     setSelId(''); setQty('1');
   }
 
-  const total = items.reduce((s, i) => s + i.qty * i.price, 0);
+  const subtotal    = items.reduce((s, i) => s + i.qty * i.price, 0);
+  const discountAmt = Math.min(+discount || 0, subtotal);
+  const total       = Math.max(0, subtotal - discountAmt);
 
   async function saveBill() {
     if (!items.length) return toast('Bill mein koi item nahi!', 'error');
     if (payment === 'udhaar' && !customer.trim()) return toast('Credit ke liye customer naam zaroori!', 'error');
     setSaving(true);
     try {
-      await Promise.all(items.map(i =>
-        fetch('/api/sales', {
+      // Distribute discount proportionally across items
+      await Promise.all(items.map(i => {
+        const itemTotal    = i.qty * i.price;
+        const itemDiscount = subtotal > 0 ? (itemTotal / subtotal) * discountAmt : 0;
+        const finalAmt     = +(itemTotal - itemDiscount).toFixed(2);
+        return fetch('/api/sales', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             item_id: i.item_id, item_name: i.item_name,
-            qty: i.qty, amount: +(i.qty * i.price).toFixed(2),
+            qty: i.qty, amount: finalAmt,
             payment, customer: customer.trim() || 'Walk-in', phone: phone.trim(),
           }),
-        }).then(async r => { if (!r.ok) throw new Error((await r.json()).error); })
-      ));
+        }).then(async r => { if (!r.ok) throw new Error((await r.json()).error); });
+      }));
       toast('✅ Bill save ho gaya!');
-      setItems([]); setCustomer(''); setPhone(''); setPayment('cash');
-      await loadInv(); // await so stock is fresh
+      setItems([]); setCustomer(''); setPhone(''); setPayment('cash'); setDiscount('0');
+      await loadInv();
     } catch (e: unknown) {
       toast(e instanceof Error ? e.message : 'Bill save nahi hua', 'error');
     } finally {
@@ -91,6 +96,8 @@ export default function BillPage() {
         table{width:100%;border-collapse:collapse;margin:10px 0}
         th{background:#1a1a2e;color:#fff;padding:5px 8px;text-align:left;font-size:12px}
         td{padding:4px 8px;border-bottom:1px solid #eee;font-size:12px}
+        .sub-row td{border-top:1px dashed #ccc;border-bottom:none;color:#555}
+        .disc-row td{color:#e94560;border-bottom:none}
         .total-row td{font-weight:bold;font-size:14px;border-top:2px solid #000;border-bottom:none}
         hr{border:none;border-top:1px dashed #999;margin:8px 0}
         .footer{text-align:center;font-size:11px;color:#888;margin-top:10px}
@@ -103,6 +110,10 @@ export default function BillPage() {
         <table>
           <tr><th>Part</th><th>Qty</th><th>Rate</th><th>Total</th></tr>
           ${items.map(i => `<tr><td>${i.item_name}</td><td>${i.qty}</td><td>₹${i.price}</td><td>₹${(i.qty * i.price).toFixed(2)}</td></tr>`).join('')}
+          ${discountAmt > 0 ? `
+          <tr class="sub-row"><td colspan="3">Subtotal</td><td>₹${subtotal.toFixed(2)}</td></tr>
+          <tr class="disc-row"><td colspan="3">Discount</td><td>-₹${discountAmt.toFixed(2)}</td></tr>
+          ` : ''}
           <tr class="total-row"><td colspan="3">TOTAL</td><td>₹${total.toFixed(2)}</td></tr>
         </table>
         <hr/>
@@ -144,7 +155,7 @@ export default function BillPage() {
             <option value="">-- Part Select Karo --</option>
             {inv.map(i => (
               <option key={i.id} value={i.id} disabled={i.stock === 0}>
-                {i.name}{i.company ? ` (${i.company})` : ''} — ₹{i.price} (Stock: {i.stock}){i.stock === 0 ? ' OUT' : ''}
+                {i.name}{i.company ? ` (${i.company})` : ''} — ₹{i.price} (Stock: {i.stock}){i.stock === 0 ? ' ❌' : ''}
               </option>
             ))}
           </select>
@@ -157,7 +168,7 @@ export default function BillPage() {
       {items.length > 0 && (
         <div className="form-box">
           <h3>Bill Preview</h3>
-          <table className="gb-table mb-4">
+          <table className="gb-table mb-3">
             <thead><tr><th>Part</th><th>Qty</th><th>Rate</th><th>Total</th><th></th></tr></thead>
             <tbody>
               {items.map(i => (
@@ -172,18 +183,26 @@ export default function BillPage() {
                   </td>
                 </tr>
               ))}
-              <tr className="bg-gray-50 font-bold">
-                <td colSpan={3} className="text-right">Grand Total:</td>
-                <td colSpan={2} className="text-green-700 text-lg">₹{total.toFixed(2)}</td>
-              </tr>
             </tbody>
           </table>
+
+          {/* Discount + Total */}
+          <div className="flex items-center gap-3 mb-4 flex-wrap">
+            <span className="text-sm text-gray-600">Subtotal: <b>₹{subtotal.toFixed(2)}</b></span>
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600">Discount ₹:</label>
+              <input className="gb-input w-28" type="number" min="0" max={subtotal}
+                value={discount} onChange={e => setDiscount(e.target.value)} />
+            </div>
+            <span className="text-lg font-bold text-green-700 ml-auto">Total: ₹{total.toFixed(2)}</span>
+          </div>
+
           <div className="flex gap-2 flex-wrap">
             <button className="btn" onClick={saveBill} disabled={saving}>
               {saving ? '⏳ Saving...' : '💾 Save Bill'}
             </button>
             <button className="btn-green" onClick={printBill}>🖨️ Print Bill</button>
-            <button className="btn-gray" onClick={() => setItems([])}>🗑️ Clear</button>
+            <button className="btn-gray" onClick={() => { setItems([]); setDiscount('0'); }}>🗑️ Clear</button>
           </div>
         </div>
       )}
