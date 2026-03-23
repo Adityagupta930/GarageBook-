@@ -33,19 +33,16 @@
 
 /* ── Reset + Base ──────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-family: var(--font); }
+html { }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font);
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   transition: background .2s, color .2s;
 }
 a { text-decoration: none; color: inherit; }
-button { font-family: var(--font); }
-input, select, textarea { font-family: var(--font); }
 
 /* ── Animations ────────────────────────────────────────────────── */
 @keyframes slide-in { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
