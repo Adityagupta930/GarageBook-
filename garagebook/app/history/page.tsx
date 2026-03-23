@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
+import { toast } from '@/components/Toast';
 import { fmtDate, fmtCurrency } from '@/lib/utils';
 import type { Sale } from '@/types';
 
@@ -32,6 +33,14 @@ export default function HistoryPage() {
     return () => document.removeEventListener('visibilitychange', onVisible);
   }, [load]);
 
+  async function deleteSale(id: number) {
+    if (!confirm('Ye sale delete karo?')) return;
+    const res = await fetch(`/api/sales/${id}`, { method: 'DELETE' });
+    if (!res.ok) return toast('Delete nahi hua', 'error');
+    toast('Sale deleted', 'info');
+    await load();
+  }
+
   const total = sales.reduce((a, s) => a + s.amount, 0);
 
   return (
@@ -54,11 +63,11 @@ export default function HistoryPage() {
       </div>
 
       <table className="gb-table">
-        <thead><tr><th>Date</th><th>Part</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Customer</th></tr></thead>
+        <thead><tr><th>Date</th><th>Part</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Customer</th><th></th></tr></thead>
         <tbody>
-          {loading ? <LoadingRows cols={6} /> :
-           error   ? <ErrorRow cols={6} msg={error} /> :
-           sales.length === 0 ? <EmptyRow cols={6} msg="Koi record nahi mila" /> :
+          {loading ? <LoadingRows cols={7} /> :
+           error   ? <ErrorRow cols={7} msg={error} /> :
+           sales.length === 0 ? <EmptyRow cols={7} msg="Koi record nahi mila" /> :
            sales.map(s => (
             <tr key={s.id}>
               <td className="text-xs text-gray-500">{fmtDate(s.date)}</td>
@@ -67,6 +76,9 @@ export default function HistoryPage() {
               <td>{fmtCurrency(s.amount)}</td>
               <td><span className={`badge badge-${s.payment}`}>{s.payment.toUpperCase()}</span></td>
               <td>{s.customer}</td>
+              <td>
+                <button className="btn-sm bg-red-500 text-white" onClick={() => deleteSale(s.id)}>🗑️</button>
+              </td>
             </tr>
           ))}
         </tbody>
