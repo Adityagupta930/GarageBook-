@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
 import ConfirmModal from '@/components/ConfirmModal';
+import { useRole } from '@/hooks/useRole';
 import type { InventoryItem } from '@/types';
 
 type EditState = { stock: string; price: string; buy_price: string; company: string; sku: string; category: string };
@@ -17,6 +18,7 @@ export default function InventoryPage() {
   const [catFilter, setCatFilter] = useState('');
   const [saving, setSaving]     = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
+  const { isOwner } = useRole();
 
   const load = useCallback(async () => {
     setError('');
@@ -94,7 +96,8 @@ export default function InventoryPage() {
 
   return (
     <div>
-      {/* Add Form */}
+      {/* Add Form — Owner Only */}
+      {isOwner && (
       <div className="form-box">
         <h3>Naya Part Add Karo</h3>
         <div className="flex flex-wrap gap-2">
@@ -108,6 +111,7 @@ export default function InventoryPage() {
           <button className="btn" onClick={addItem} disabled={saving}>{saving ? '⏳...' : '➕ Add'}</button>
         </div>
       </div>
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-3 items-center">
@@ -162,7 +166,7 @@ export default function InventoryPage() {
                   <td className="text-gray-500">{e ? <input className="gb-input w-24" type="number" min="0" value={e.buy_price} onChange={ev => setEditing(p => ({ ...p, [item.id]: { ...p[item.id], buy_price: ev.target.value } }))} /> : `₹${item.buy_price}`}</td>
                   <td><span className={`text-xs font-semibold ${+margin >= 20 ? 'text-green-600' : +margin >= 10 ? 'text-orange-500' : 'text-red-500'}`}>{margin}%</span></td>
                   <td className="flex gap-1 flex-wrap">
-                    {e ? (
+                    {isOwner && (e ? (
                       <>
                         <button className="btn-sm bg-green-600 text-white" onClick={() => saveEdit(item.id)}>💾</button>
                         <button className="btn-sm bg-gray-400 text-white" onClick={() => setEditing(p => { const n = { ...p }; delete n[item.id]; return n; })}>✖</button>
@@ -175,7 +179,8 @@ export default function InventoryPage() {
                         </button>
                         <button className="btn-sm bg-red-500 text-white" onClick={() => deleteItem(item.id, item.name)}>🗑️</button>
                       </>
-                    )}
+                    ))}
+                    {!isOwner && <span style={{ fontSize: '11px', color: 'var(--text3)' }}>—</span>}
                   </td>
                 </tr>
               );

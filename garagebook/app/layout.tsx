@@ -3,12 +3,10 @@ import { Inter } from 'next/font/google';
 import './globals.css';
 import ShellClient from '@/components/ShellClient';
 import ToastContainer from '@/components/Toast';
+import SwRegister from '@/components/SwRegister';
 import { initDb } from '@/lib/db';
 
-const inter = Inter({
-  subsets: ['latin'],
-  display: 'swap',
-});
+const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'GarageBook — Auto Parts Shop',
@@ -20,9 +18,15 @@ initDb().catch(console.error);
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning className={inter.className}>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#e94560" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
       <body>
         <ShellClient>{children}</ShellClient>
         <ToastContainer />
+        <SwRegister />
       </body>
     </html>
   );
