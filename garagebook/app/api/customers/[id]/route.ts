@@ -7,7 +7,7 @@ type Params = { params: Promise<{ id: string }> };
 export async function DELETE(_req: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    db.prepare('DELETE FROM customers WHERE id = ?').run(id);
+    await db.execute({ sql: 'DELETE FROM customers WHERE id = ?', args: [id] });
     return apiOk({ success: true });
   } catch (e) {
     console.error('[DELETE /api/customers/:id]', e);
