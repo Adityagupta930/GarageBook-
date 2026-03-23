@@ -1,9 +1,7 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 /* ── CSS Variables ─────────────────────────────────────────────── */
 :root {
-  --font:      'Inter', system-ui, -apple-system, sans-serif;
   --bg:        #f1f5f9;
   --surface:   #ffffff;
   --surface2:  #f8fafc;

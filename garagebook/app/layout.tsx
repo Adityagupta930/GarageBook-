@@ -5,7 +5,10 @@ import ShellClient from '@/components/ShellClient';
 import ToastContainer from '@/components/Toast';
 import { initDb } from '@/lib/db';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 export const metadata: Metadata = {
   title: 'GarageBook — Auto Parts Shop',
@@ -16,7 +19,7 @@ initDb().catch(console.error);
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning className={inter.variable}>
+    <html lang="en" suppressHydrationWarning className={inter.className}>
       <body>
         <ShellClient>{children}</ShellClient>
         <ToastContainer />
