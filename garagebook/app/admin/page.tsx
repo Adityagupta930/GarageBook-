@@ -3,15 +3,17 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
 import { fmtDate, fmtCurrency } from '@/lib/utils';
-import type { Customer, Return, ReportSummary } from '@/types';
+import type { Customer, Return, ReportSummary, DailyReport, TopPart } from '@/types';
 
-type Tab = 'customers' | 'returns' | 'reports';
+type Tab = 'reports' | 'customers' | 'returns';
 
 export default function AdminPage() {
-  const [tab, setTab]             = useState<Tab>('customers');
+  const [tab, setTab]             = useState<Tab>('reports');
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [returns, setReturns]     = useState<Return[]>([]);
   const [summary, setSummary]     = useState<ReportSummary | null>(null);
+  const [daily, setDaily]         = useState<DailyReport[]>([]);
+  const [topParts, setTopParts]   = useState<TopPart[]>([]);
   const [cLoading, setCLoading]   = useState(false);
   const [rLoading, setRLoading]   = useState(false);
   const [sLoading, setSLoading]   = useState(false);
@@ -20,34 +22,43 @@ export default function AdminPage() {
 
   const loadCustomers = useCallback(async () => {
     setCLoading(true);
-    try { setCustomers(await fetch('/api/customers').then(r => r.json())); }
-    finally { setCLoading(false); }
+    try {
+      const d = await fetch('/api/customers').then(r => r.json());
+      setCustomers(Array.isArray(d) ? d : []);
+    } finally { setCLoading(false); }
   }, []);
 
   const loadReturns = useCallback(async () => {
     setRLoading(true);
-    try { setReturns(await fetch('/api/returns').then(r => r.json())); }
-    finally { setRLoading(false); }
+    try {
+      const d = await fetch('/api/returns').then(r => r.json());
+      setReturns(Array.isArray(d) ? d : []);
+    } finally { setRLoading(false); }
   }, []);
 
-  const loadSummary = useCallback(async () => {
+  const loadReports = useCallback(async () => {
     setSLoading(true);
-    try { setSummary(await fetch('/api/reports?type=summary').then(r => r.json())); }
-    finally { setSLoading(false); }
+    try {
+      const [s, d, t] = await Promise.all([
+        fetch('/api/reports?type=summary').then(r => r.json()),
+        fetch('/api/reports?type=daily').then(r => r.json()),
+        fetch('/api/reports?type=topparts').then(r => r.json()),
+      ]);
+      setSummary(s);
+      setDaily(Array.isArray(d) ? d.slice(0, 30) : []);
+      setTopParts(Array.isArray(t) ? t : []);
+    } finally { setSLoading(false); }
   }, []);
 
   useEffect(() => {
     if (tab === 'customers') loadCustomers();
     if (tab === 'returns')   loadReturns();
-    if (tab === 'reports')   loadSummary();
-  }, [tab, loadCustomers, loadReturns, loadSummary]);
+    if (tab === 'reports')   loadReports();
+  }, [tab, loadCustomers, loadReturns, loadReports]);
 
   async function addCustomer() {
     if (!cForm.name.trim()) return toast('Customer naam zaroori!', 'error');
-    const res = await fetch('/api/customers', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...cForm, name: cForm.name.trim() }),
-    });
+    const res = await fetch('/api/customers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...cForm, name: cForm.name.trim() }) });
     const data = await res.json();
     if (!res.ok) return toast(data.error, 'error');
     toast(`${cForm.name} add ho gaya!`);
@@ -65,10 +76,7 @@ export default function AdminPage() {
 
   async function addReturn() {
     if (!rForm.item_name.trim() || !rForm.qty || !rForm.amount) return toast('Sab fields bharo!', 'error');
-    const res = await fetch('/api/returns', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...rForm, item_name: rForm.item_name.trim(), qty: +rForm.qty, amount: +rForm.amount }),
-    });
+    const res = await fetch('/api/returns', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...rForm, item_name: rForm.item_name.trim(), qty: +rForm.qty, amount: +rForm.amount }) });
     const data = await res.json();
     if (!res.ok) return toast(data.error || 'Return failed', 'error');
     toast('Return darj ho gaya!');
@@ -77,10 +85,13 @@ export default function AdminPage() {
   }
 
   const tabs: { key: Tab; label: string }[] = [
+    { key: 'reports',   label: '📊 Reports' },
     { key: 'customers', label: '👥 Customers' },
     { key: 'returns',   label: '↩️ Returns' },
-    { key: 'reports',   label: '📊 Reports' },
   ];
+
+  // Bar chart max value
+  const maxDaily = daily.length ? Math.max(...daily.map(d => Number(d.total) || 0)) : 1;
 
   return (
     <div>
@@ -92,6 +103,90 @@ export default function AdminPage() {
           </button>
         ))}
       </div>
+
+      {/* REPORTS */}
+      {tab === 'reports' && (
+        <div>
+          <div className="flex justify-end mb-4">
+            <button className="btn-gray text-sm px-3 py-1.5 rounded-lg" onClick={loadReports}>🔄 Refresh</button>
+          </div>
+
+          {sLoading ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+              {Array.from({ length: 7 }).map((_, i) => <div key={i} className="bg-gray-200 rounded-xl p-5 animate-pulse h-20" />)}
+            </div>
+          ) : summary ? (
+            <>
+              {/* Summary Cards */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+                {[
+                  { label: 'Total Sales',    value: fmtCurrency(summary.totalSales),    color: 'bg-green-600' },
+                  { label: 'Cash Sales',     value: fmtCurrency(summary.cashSales),     color: 'bg-blue-600' },
+                  { label: 'Online Sales',   value: fmtCurrency(summary.onlineSales),   color: 'bg-indigo-600' },
+                  { label: 'Credit Sales',   value: fmtCurrency(summary.creditSales),   color: 'bg-orange-500' },
+                  { label: 'Net Profit',     value: fmtCurrency(summary.profit),        color: 'bg-emerald-600' },
+                  { label: 'Items Sold',     value: String(summary.totalItems ?? 0),    color: 'bg-purple-600' },
+                  { label: 'Pending Credit', value: fmtCurrency(summary.pendingCredit), color: 'bg-red-600' },
+                ].map(c => (
+                  <div key={c.label} className={`${c.color} text-white rounded-xl p-4`}>
+                    <p className="text-xs opacity-80">{c.label}</p>
+                    <p className="text-xl font-bold mt-1">{c.value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Daily Bar Chart */}
+              {daily.length > 0 && (
+                <div className="form-box">
+                  <h3>Last 30 Days — Daily Sales</h3>
+                  <div className="flex items-end gap-1 h-40 overflow-x-auto pb-2">
+                    {[...daily].reverse().map(d => {
+                      const pct = maxDaily > 0 ? (Number(d.total) / maxDaily) * 100 : 0;
+                      return (
+                        <div key={d.day} className="flex flex-col items-center gap-1 flex-shrink-0" style={{ minWidth: '28px' }}>
+                          <span className="text-xs text-gray-500 font-medium" style={{ fontSize: '9px' }}>
+                            ₹{Number(d.total) >= 1000 ? (Number(d.total)/1000).toFixed(1)+'k' : Number(d.total).toFixed(0)}
+                          </span>
+                          <div
+                            className="w-5 rounded-t bg-[#e94560] hover:bg-red-700 transition-colors cursor-default"
+                            style={{ height: `${Math.max(pct, 2)}%` }}
+                            title={`${d.day}: ₹${Number(d.total).toFixed(2)}`}
+                          />
+                          <span className="text-gray-400" style={{ fontSize: '8px', writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}>
+                            {d.day.slice(5)}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Top Parts */}
+              {topParts.length > 0 && (
+                <div className="form-box">
+                  <h3>🏆 Top 10 Best Selling Parts</h3>
+                  <table className="gb-table">
+                    <thead><tr><th>#</th><th>Part</th><th>Qty Sold</th><th>Revenue</th></tr></thead>
+                    <tbody>
+                      {topParts.map((p, i) => (
+                        <tr key={p.item_name}>
+                          <td className="text-gray-400 font-mono">{i + 1}</td>
+                          <td className="font-medium">{p.item_name}</td>
+                          <td><span className="badge bg-blue-100 text-blue-800">{p.total_qty}</span></td>
+                          <td className="font-semibold text-green-700">{fmtCurrency(Number(p.total_amount))}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-gray-400 text-center py-8">Koi data nahi</p>
+          )}
+        </div>
+      )}
 
       {/* CUSTOMERS */}
       {tab === 'customers' && (
@@ -112,9 +207,9 @@ export default function AdminPage() {
                customers.length === 0 ? <EmptyRow cols={4} msg="Koi customer nahi" /> :
                customers.map(c => (
                 <tr key={c.id}>
-                  <td>{c.name}</td>
+                  <td className="font-medium">{c.name}</td>
                   <td>{c.phone || '-'}</td>
-                  <td>{c.address || '-'}</td>
+                  <td className="text-gray-500 text-xs">{c.address || '-'}</td>
                   <td><button className="btn-sm bg-red-500 text-white" onClick={() => deleteCustomer(c.id, c.name)}>🗑️</button></td>
                 </tr>
               ))}
@@ -147,45 +242,11 @@ export default function AdminPage() {
                   <td>{r.item_name}</td>
                   <td>{r.qty}</td>
                   <td>{fmtCurrency(r.amount)}</td>
-                  <td>{r.reason || '-'}</td>
+                  <td className="text-gray-500 text-xs">{r.reason || '-'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {/* REPORTS */}
-      {tab === 'reports' && (
-        <div>
-          <div className="flex justify-end mb-4">
-            <button className="btn-gray text-sm px-3 py-1.5 rounded-lg" onClick={loadSummary}>🔄 Refresh</button>
-          </div>
-          {sLoading ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="bg-gray-200 rounded-xl p-5 animate-pulse h-24" />
-              ))}
-            </div>
-          ) : summary ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {[
-                { label: 'Total Sales',    value: fmtCurrency(summary.totalSales),    color: 'bg-green-600' },
-                { label: 'Cash Sales',     value: fmtCurrency(summary.cashSales),     color: 'bg-blue-600' },
-                { label: 'Online Sales',   value: fmtCurrency(summary.onlineSales),   color: 'bg-indigo-600' },
-                { label: 'Credit Sales',   value: fmtCurrency(summary.creditSales),   color: 'bg-orange-500' },
-                { label: 'Net Profit',     value: fmtCurrency(summary.profit),        color: 'bg-emerald-600' },
-                { label: 'Pending Credit', value: fmtCurrency(summary.pendingCredit), color: 'bg-red-600' },
-              ].map(c => (
-                <div key={c.label} className={`${c.color} text-white rounded-xl p-5`}>
-                  <p className="text-sm opacity-90">{c.label}</p>
-                  <p className="text-2xl font-bold mt-1">{c.value}</p>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <ErrorRow cols={1} msg="Reports load nahi hui" />
-          )}
         </div>
       )}
     </div>
