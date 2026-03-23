@@ -22,9 +22,10 @@ export default function Dashboard() {
         fetch('/api/sales').then(r => r.json()),
         fetch('/api/inventory').then(r => r.json()),
       ]);
-      setSales(s); setInv(i);
+      setSales(Array.isArray(s) ? s : []);
+      setInv(Array.isArray(i) ? i : []);
     } catch {
-      setError('Data load nahi hua. Server chal raha hai?');
+      setError('Data load nahi hua. Internet check karo.');
     } finally {
       setLoading(false);
     }
@@ -32,7 +33,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     load();
-    // Refresh when user comes back to this tab
     const onVisible = () => { if (document.visibilityState === 'visible') load(); };
     document.addEventListener('visibilitychange', onVisible);
     return () => document.removeEventListener('visibilitychange', onVisible);
@@ -48,11 +48,12 @@ export default function Dashboard() {
     return true;
   };
 
-  const filtered = sales.filter(filterSales);
-  const income   = filtered.filter(s => s.payment !== 'udhaar').reduce((a, s) => a + s.amount, 0);
-  const profit   = filtered.reduce((a, s) => a + ((s.amount / s.qty) - s.buy_price) * s.qty, 0);
-  const credit   = sales.filter(s => s.payment === 'udhaar' && !s.udhaar_paid).reduce((a, s) => a + s.amount, 0);
-  const lowStock = inv.filter(i => i.stock <= 3).length;
+  const filtered  = sales.filter(filterSales);
+  const income    = filtered.filter(s => s.payment !== 'udhaar').reduce((a, s) => a + Number(s.amount), 0);
+  const profit    = filtered.reduce((a, s) => a + ((Number(s.amount) / Number(s.qty)) - Number(s.buy_price)) * Number(s.qty), 0);
+  const credit    = sales.filter(s => s.payment === 'udhaar' && !s.udhaar_paid).reduce((a, s) => a + Number(s.amount), 0);
+  const lowStock  = inv.filter(i => Number(i.stock) <= 3).length;
+  const outStock  = inv.filter(i => Number(i.stock) === 0).length;
 
   function exportCSV() {
     if (!sales.length) return toast('Koi data nahi', 'info');
@@ -68,13 +69,15 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      {/* Stat Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <StatCard label={`${range === 'today' ? 'Aaj ki' : range === 'week' ? 'Week ki' : 'Month ki'} Kamai`} value={fmtCurrency(income)} color="green" />
         <StatCard label="Net Profit" value={fmtCurrency(profit)} color="blue" />
         <StatCard label="Credit Pending" value={fmtCurrency(credit)} color="orange" />
-        <StatCard label="Low Stock Parts" value={lowStock} color="red" />
+        <StatCard label={`Low Stock${outStock > 0 ? ` (${outStock} OUT)` : ''}`} value={lowStock} color="red" />
       </div>
 
+      {/* Filters */}
       <div className="flex flex-wrap justify-between items-center mb-3 gap-2">
         <div className="flex gap-1">
           {(['today', 'week', 'month'] as Range[]).map(r => (
@@ -86,9 +89,19 @@ export default function Dashboard() {
         </div>
         <div className="flex gap-2">
           <button className="btn-gray text-sm px-3 py-1.5 rounded-lg" onClick={load}>🔄 Refresh</button>
-          <button className="btn text-sm" onClick={exportCSV}>⬇️ Export CSV</button>
+          <button className="btn text-sm" onClick={exportCSV}>⬇️ CSV</button>
         </div>
       </div>
+
+      {/* Summary row */}
+      {!loading && filtered.length > 0 && (
+        <div className="bg-white rounded-xl px-4 py-2.5 mb-3 shadow-sm flex flex-wrap gap-4 text-sm">
+          <span>📦 <b>{filtered.length}</b> sales</span>
+          <span>💵 Cash: <b className="text-green-700">{fmtCurrency(filtered.filter(s => s.payment === 'cash').reduce((a, s) => a + Number(s.amount), 0))}</b></span>
+          <span>📱 Online: <b className="text-blue-700">{fmtCurrency(filtered.filter(s => s.payment === 'online').reduce((a, s) => a + Number(s.amount), 0))}</b></span>
+          <span>📋 Credit: <b className="text-orange-600">{fmtCurrency(filtered.filter(s => s.payment === 'udhaar').reduce((a, s) => a + Number(s.amount), 0))}</b></span>
+        </div>
+      )}
 
       <table className="gb-table">
         <thead><tr><th>Part</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Customer</th><th>Date</th></tr></thead>
@@ -98,11 +111,11 @@ export default function Dashboard() {
            filtered.length === 0 ? <EmptyRow cols={6} msg="Is period mein koi sale nahi" /> :
            filtered.map(s => (
             <tr key={s.id}>
-              <td>{s.item_name}</td>
+              <td className="font-medium">{s.item_name}</td>
               <td>{s.qty}</td>
-              <td>{fmtCurrency(s.amount)}</td>
-              <td><span className={`badge badge-${s.payment}`}>{s.payment.toUpperCase()}</span></td>
-              <td>{s.customer}</td>
+              <td className="font-semibold">{fmtCurrency(Number(s.amount))}</td>
+              <td><span className={`badge badge-${s.payment}`}>{s.payment === 'udhaar' ? 'CREDIT' : s.payment.toUpperCase()}</span></td>
+              <td className="text-gray-600">{s.customer === 'Walk-in' ? <span className="text-gray-400">Walk-in</span> : s.customer}</td>
               <td className="text-gray-400 text-xs">{fmtDate(s.date)}</td>
             </tr>
           ))}
