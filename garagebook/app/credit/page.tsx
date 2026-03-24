@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
 import { fmtDate, fmtCurrency } from '@/lib/utils';
+import { listenSync, broadcast } from '@/lib/sync';
 import type { Sale } from '@/types';
 
 interface CreditGroup { customer: string; phone: string; total: number; }
@@ -28,7 +29,8 @@ export default function CreditPage() {
     load();
     const onVisible = () => { if (document.visibilityState === 'visible') load(); };
     document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    const unsync = listenSync(['sales'], load);
+    return () => { document.removeEventListener('visibilitychange', onVisible); unsync(); };
   }, [load]);
 
   const pending = sales.filter(s => s.payment === 'udhaar' && !s.udhaar_paid);
@@ -49,7 +51,8 @@ export default function CreditPage() {
     });
     if (!res.ok) return toast('Update nahi hua', 'error');
     toast('✅ Paid mark ho gaya!');
-    await load(); // await so modal also refreshes
+    broadcast('sales');
+    await load();
   }
 
   const modalSales = modal
