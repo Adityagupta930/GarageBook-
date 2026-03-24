@@ -4,6 +4,7 @@ import { toast } from '@/components/Toast';
 import { fuzzyMatch } from '@/lib/utils';
 import { enqueueOfflineSale, useOfflineSync } from '@/hooks/useOfflineSync';
 import { broadcast, listenSync } from '@/lib/sync';
+import CustomerAutocomplete from '@/components/CustomerAutocomplete';
 import type { InventoryItem } from '@/types';
 
 const FREQ_KEY = 'gb_freq_items';
@@ -242,9 +243,12 @@ export default function SalePage() {
           <option value="online">📱 Online</option>
           <option value="udhaar">📋 Credit (Udhaar)</option>
         </select>
-        <input className="gb-input"
+        <CustomerAutocomplete
+          value={customer}
+          onChange={(name, phone) => { setCustomer(name); if (phone !== undefined) setPhone(phone); }}
           placeholder={payment === 'udhaar' ? 'Customer naam (zaroori!) *' : 'Customer naam (optional)'}
-          value={customer} onChange={e => setCustomer(e.target.value)} />
+          required={payment === 'udhaar'}
+        />
         <input className="gb-input" placeholder="Phone (optional)"
           value={phone} onChange={e => setPhone(e.target.value)} />
         <button className="btn w-full mt-1" onClick={recordSale} disabled={saving || !itemId}>

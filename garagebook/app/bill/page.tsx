@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import { fmtDate } from '@/lib/utils';
 import { broadcast, listenSync } from '@/lib/sync';
+import CustomerAutocomplete from '@/components/CustomerAutocomplete';
 import type { InventoryItem } from '@/types';
 
 interface BillItem { item_id: number; item_name: string; qty: number; price: number; }
@@ -205,9 +206,12 @@ export default function BillPage() {
       <div className="form-box">
         <h3>Customer Details</h3>
         <div className="flex flex-wrap gap-2">
-          <input className="gb-input"
+          <CustomerAutocomplete
+            value={customer}
+            onChange={(name, phone) => { setCustomer(name); if (phone !== undefined) setPhone(phone); }}
             placeholder={payment === 'udhaar' ? 'Customer naam *' : 'Customer naam (optional)'}
-            value={customer} onChange={e => setCustomer(e.target.value)} />
+            required={payment === 'udhaar'}
+          />
           <input className="gb-input" placeholder="Phone (optional)" value={phone} onChange={e => setPhone(e.target.value)} />
           <select className="gb-input" value={payment} onChange={e => setPayment(e.target.value as typeof payment)}>
             <option value="cash">💵 Cash</option>
