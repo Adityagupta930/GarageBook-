@@ -1,4 +1,3 @@
-// Events: 'inventory' | 'sales' | 'customers' | 'returns'
 const SYNC_EVENT = 'gb:sync';
 
 export type SyncChannel = 'inventory' | 'sales' | 'customers' | 'returns';
@@ -9,10 +8,9 @@ export function broadcast(channel: SyncChannel) {
   window.dispatchEvent(new CustomEvent(SYNC_EVENT, { detail: { channel } }));
 }
 
-/** Listen karo — jab bhi channel ka data change ho, callback chalega */
-export function useSyncListener(channels: SyncChannel[], callback: () => void) {
-  if (typeof window === 'undefined') return;
-  // This is called inside useEffect in components
+/** useEffect ke andar call karo — cleanup function return karta hai */
+export function listenSync(channels: SyncChannel[], callback: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
   const handler = (e: Event) => {
     const { channel } = (e as CustomEvent<{ channel: SyncChannel }>).detail;
     if (channels.includes(channel)) callback();

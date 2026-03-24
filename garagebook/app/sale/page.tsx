@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from '@/components/Toast';
 import { fuzzyMatch } from '@/lib/utils';
 import { enqueueOfflineSale, useOfflineSync } from '@/hooks/useOfflineSync';
+import { broadcast } from '@/lib/sync';
 import type { InventoryItem } from '@/types';
 
 const FREQ_KEY = 'gb_freq_items';
