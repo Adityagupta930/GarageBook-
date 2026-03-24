@@ -30,6 +30,7 @@ export default function SalePage() {
   const [phone, setPhone]       = useState('');
   const [saving, setSaving]     = useState(false);
   const [success, setSuccess]   = useState(false);
+  const [lastBill, setLastBill] = useState(false);
   const searchRef               = useRef<HTMLInputElement>(null);
 
   const { pendingCount } = useOfflineSync();
@@ -115,6 +116,14 @@ export default function SalePage() {
       toast(`✅ ${item.name} ×${qty} = ₹${finalAmount} (${payment.toUpperCase()})`);
       broadcast('sales');
       broadcast('inventory');
+      sessionStorage.setItem('gb_pending_bill', JSON.stringify({
+        items: [{ item_id: item.id, item_name: item.name, qty: +qty, price: +price }],
+        customer: payload.customer,
+        phone: payload.phone,
+        payment,
+        discount: +discount,
+      }));
+      setLastBill(true);
     } catch {
       enqueueOfflineSale(payload);
     } finally {
