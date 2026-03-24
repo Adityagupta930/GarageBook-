@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { toast } from '@/components/Toast';
 import { fuzzyMatch } from '@/lib/utils';
 import { enqueueOfflineSale, useOfflineSync } from '@/hooks/useOfflineSync';
-import { broadcast } from '@/lib/sync';
+import { broadcast, listenSync } from '@/lib/sync';
 import type { InventoryItem } from '@/types';
 
 const FREQ_KEY = 'gb_freq_items';
@@ -38,7 +38,11 @@ export default function SalePage() {
     setInv(Array.isArray(data) ? data : []);
   }, []);
 
-  useEffect(() => { loadInv(); }, [loadInv]);
+  useEffect(() => {
+    loadInv();
+    const unsync = listenSync(['inventory'], loadInv);
+    return unsync;
+  }, [loadInv]);
 
   // Keyboard shortcut: Enter to submit when form is filled
   useEffect(() => {

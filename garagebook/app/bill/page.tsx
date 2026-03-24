@@ -2,7 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import { fmtDate } from '@/lib/utils';
-import { broadcast } from '@/lib/sync';
+import { broadcast, listenSync } from '@/lib/sync';
 import type { InventoryItem } from '@/types';
 
 interface BillItem { item_id: number; item_name: string; qty: number; price: number; }
@@ -36,6 +36,8 @@ export default function BillPage() {
     if (saved) setShopName(saved);
     const lastEmail = localStorage.getItem(EMAIL_KEY);
     if (lastEmail) setEmailTo(lastEmail);
+    const unsync = listenSync(['inventory'], loadInv);
+    return unsync;
   }, [loadInv]);
 
   function onShopNameChange(val: string) {
