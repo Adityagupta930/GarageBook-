@@ -108,6 +108,8 @@ export default function SalePage() {
         return toast(data.error || 'Sale save nahi hua', 'error');
       }
       toast(`✅ ${item.name} ×${qty} = ₹${finalAmount} (${payment.toUpperCase()})`);
+      broadcast('sales');
+      broadcast('inventory');
     } catch {
       enqueueOfflineSale(payload);
     } finally {
