@@ -7,6 +7,7 @@ import type { Customer, Return, ReportSummary, DailyReport, TopPart } from '@/ty
 import { DailyBarChart, TopPartsChart } from '@/components/Charts';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useRole } from '@/hooks/useRole';
+import { broadcast } from '@/lib/sync';
 import { getErrorLog, clearErrorLog } from '@/hooks/useErrorLogger';
 
 type Tab = 'reports' | 'customers' | 'returns' | 'errorlog';
@@ -69,6 +70,7 @@ export default function AdminPage() {
     const data = await res.json();
     if (!res.ok) return toast(data.error, 'error');
     toast(`${cForm.name} add ho gaya!`);
+    broadcast('customers');
     setCForm({ name: '', phone: '', address: '' });
     await loadCustomers();
   }
@@ -81,6 +83,7 @@ export default function AdminPage() {
     const res = await fetch(`/api/customers/${id}`, { method: 'DELETE' });
     if (!res.ok) return toast('Delete nahi hua', 'error');
     toast(`${name} deleted`, 'info');
+    broadcast('customers');
     setConfirmCust(null);
     await loadCustomers();
   }
@@ -91,6 +94,7 @@ export default function AdminPage() {
     const data = await res.json();
     if (!res.ok) return toast(data.error || 'Return failed', 'error');
     toast('Return darj ho gaya!');
+    broadcast('returns');
     setRForm({ item_name: '', qty: '', amount: '', reason: '' });
     await loadReturns();
   }

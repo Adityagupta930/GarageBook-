@@ -2,6 +2,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import { fmtDate } from '@/lib/utils';
+import { broadcast } from '@/lib/sync';
 import type { InventoryItem } from '@/types';
 
 interface BillItem { item_id: number; item_name: string; qty: number; price: number; }
@@ -74,6 +75,8 @@ export default function BillPage() {
         }).then(async r => { if (!r.ok) throw new Error((await r.json()).error); });
       }));
       toast('✅ Bill save ho gaya!');
+      broadcast('sales');
+      broadcast('inventory');
       setItems([]); setCustomer(''); setPhone(''); setPayment('cash'); setDiscount('0');
       await loadInv();
     } catch (e: unknown) {

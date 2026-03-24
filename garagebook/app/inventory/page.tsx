@@ -4,6 +4,7 @@ import { toast } from '@/components/Toast';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useRole } from '@/hooks/useRole';
+import { listenSync, broadcast } from '@/lib/sync';
 import type { InventoryItem } from '@/types';
 
 type EditState = { stock: string; price: string; buy_price: string; company: string; sku: string; category: string };
@@ -35,7 +36,11 @@ export default function InventoryPage() {
     }
   }, [search, catFilter]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    const unsync = listenSync(['inventory'], load);
+    return unsync;
+  }, [load]);
 
   // All unique categories from loaded items
   const allCategories = [...new Set(items.map(i => i.category).filter(Boolean))];
@@ -53,6 +58,7 @@ export default function InventoryPage() {
       const data = await res.json();
       if (!res.ok) return toast(data.error, 'error');
       toast(`"${name.trim()}" add ho gaya!`);
+      broadcast('inventory');
       setForm({ name: '', sku: '', category: '', stock: '', price: '', buy_price: '', company: '' });
       await load();
     } finally {
@@ -71,6 +77,7 @@ export default function InventoryPage() {
       const data = await res.json();
       if (!res.ok) return toast(data.error || 'Update failed', 'error');
       toast('Updated!');
+      broadcast('inventory');
       setEditing(p => { const n = { ...p }; delete n[id]; return n; });
       await load();
     } catch { toast('Update nahi hua', 'error'); }
@@ -84,6 +91,7 @@ export default function InventoryPage() {
     const res = await fetch(`/api/inventory/${id}`, { method: 'DELETE' });
     if (!res.ok) return toast('Delete nahi hua', 'error');
     toast(`"${name}" deleted`, 'info');
+    broadcast('inventory');
     setConfirmDelete(null);
     await load();
   }
