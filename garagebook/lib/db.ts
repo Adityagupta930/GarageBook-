@@ -19,7 +19,7 @@ export async function initDb() {
   await db.executeMultiple(`
     CREATE TABLE IF NOT EXISTS inventory (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
-      name       TEXT    NOT NULL UNIQUE,
+      name       TEXT    NOT NULL,
       sku        TEXT    DEFAULT '',
       category   TEXT    DEFAULT '',
       stock      INTEGER NOT NULL DEFAULT 0,
@@ -68,6 +68,33 @@ export async function initDb() {
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* column already exists */ }
   }
+
+  // Remove UNIQUE constraint on name — allow same part from different companies
+  // SQLite doesn't support DROP CONSTRAINT, so we recreate the table
+  try {
+    const info = await db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='inventory'");
+    const ddl  = String((info.rows[0] as Record<string, unknown>)?.sql || '');
+    if (ddl.includes('UNIQUE') && ddl.toUpperCase().includes('NAME')) {
+      await db.executeMultiple(`
+        PRAGMA foreign_keys=OFF;
+        CREATE TABLE IF NOT EXISTS inventory_new (
+          id         INTEGER PRIMARY KEY AUTOINCREMENT,
+          name       TEXT    NOT NULL,
+          sku        TEXT    DEFAULT '',
+          category   TEXT    DEFAULT '',
+          stock      INTEGER NOT NULL DEFAULT 0,
+          price      REAL    NOT NULL DEFAULT 0,
+          buy_price  REAL    NOT NULL DEFAULT 0,
+          company    TEXT    NOT NULL DEFAULT '',
+          created_at TEXT    DEFAULT (datetime('now','localtime'))
+        );
+        INSERT OR IGNORE INTO inventory_new SELECT * FROM inventory;
+        DROP TABLE inventory;
+        ALTER TABLE inventory_new RENAME TO inventory;
+        PRAGMA foreign_keys=ON;
+      `);
+    }
+  } catch { /* already migrated */ }
 }
 
 export default db;
