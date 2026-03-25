@@ -29,7 +29,7 @@ export default function Topbar({ onMenuClick, role, setRole, isOwner }: Props) {
   const [lowItems, setLowItems]   = useState<InventoryItem[]>([]);
   const [online, setOnline]       = useState(true);
   const { lang, setLang, t }      = useLang();
-  const page = titles[path] ?? { label: 'GarageBook', icon: '🔧' };
+  const page = titles[path] ?? { label: 'Porwal Autoparts', icon: '🔧' };
 
   useEffect(() => {
     const saved = localStorage.getItem('gb_theme');

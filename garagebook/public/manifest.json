@@ -1,7 +1,7 @@
 {
-  "name": "GarageBook — Auto Parts Manager",
-  "short_name": "GarageBook",
-  "description": "Auto parts dukaan manager",
+  "name": "Porwal Autoparts",
+  "short_name": "Porwal",
+  "description": "Porwal Autoparts — Auto Parts Shop Manager",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0d1117",

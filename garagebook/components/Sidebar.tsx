@@ -33,7 +33,7 @@ export default function Sidebar({ onClose, isOwner }: Props) {
         <div className="logo-row">
           <div className="logo-icon">🔧</div>
           <div>
-            <h1>GarageBook</h1>
+            <h1>Porwal Autoparts</h1>
             <p>Auto Parts Manager</p>
           </div>
         </div>

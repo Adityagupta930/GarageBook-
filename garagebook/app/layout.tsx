@@ -10,8 +10,8 @@ import { initDb } from '@/lib/db';
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
 export const metadata: Metadata = {
-  title: 'GarageBook — Auto Parts Shop',
-  description: 'Auto parts dukaan manager',
+  title: 'Porwal Autoparts',
+  description: 'Porwal Autoparts — Auto Parts Shop Manager',
 };
 
 initDb().catch(console.error);
