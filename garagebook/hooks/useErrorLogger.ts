@@ -1,7 +1,7 @@
 'use client';
 import { useEffect } from 'react';
 
-const KEY = 'gb_error_log';
+const KEY = 'pa_error_log';
 const MAX  = 50;
 
 interface LogEntry { ts: string; msg: string; stack?: string; url: string; }

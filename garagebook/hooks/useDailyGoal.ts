@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 
-const KEY = 'gb_daily_goal';
+const KEY = 'pa_daily_goal';
 
 export function useDailyGoal() {
   const [goal, setGoalState] = useState(0);
