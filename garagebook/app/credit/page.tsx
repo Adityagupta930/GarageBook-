@@ -76,6 +76,24 @@ export default function CreditPage() {
 
   const totalPending = groups.reduce((a, g) => a + g.total, 0);
 
+  function sendCreditReminder(customer: string, phone: string, amount: number) {
+    const num = phone.replace(/\D/g, '');
+    if (!num) return toast('Is customer ka phone number nahi hai', 'error');
+    const intlNum = num.startsWith('91') ? num : `91${num}`;
+    const msg = [
+      `🔔 *Porwal Autoparts — Payment Reminder*`,
+      ``,
+      `Namaste *${customer}* ji,`,
+      ``,
+      `Aapka ₹${amount.toFixed(0)} ka udhaar pending hai.`,
+      `Kripa karke jald se jald payment kar dijiye.`,
+      ``,
+      `_Dhanyawad 🙏_`,
+      `*Porwal Autoparts*`,
+    ].join('\n');
+    window.open(`https://wa.me/${intlNum}?text=${encodeURIComponent(msg)}`, '_blank');
+  }
+
   return (
     <div>
       <div className="flex justify-between items-center mb-3">
@@ -96,11 +114,19 @@ export default function CreditPage() {
               <td className="font-medium">{g.customer}</td>
               <td>{g.phone || '-'}</td>
               <td className="text-red-600 font-bold">{fmtCurrency(g.total)}</td>
-              <td>
+              <td style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
                 <button className="btn-sm bg-purple-600 text-white"
                   onClick={() => setModal({ customer: g.customer, phone: g.phone })}>
                   👁 View
                 </button>
+                {g.phone && (
+                  <button className="btn-sm text-white"
+                    style={{ background: '#25d366' }}
+                    onClick={() => sendCreditReminder(g.customer, g.phone, g.total)}
+                    title="WhatsApp reminder bhejo">
+                    📱 Remind
+                  </button>
+                )}
               </td>
             </tr>
           ))}

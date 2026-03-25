@@ -87,22 +87,33 @@ export default function BillPage() {
     if (payment === 'udhaar' && !customer.trim()) return toast('Credit ke liye customer naam zaroori!', 'error');
     setSaving(true);
     try {
-      // Distribute discount proportionally across items
-      await Promise.all(items.map(i => {
-        const itemTotal    = i.qty * i.price;
-        const itemDiscount = subtotal > 0 ? (itemTotal / subtotal) * discountAmt : 0;
-        const finalAmt     = +(itemTotal - itemDiscount).toFixed(2);
-        return fetch('/api/sales', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            item_id: i.item_id, item_name: i.item_name,
-            qty: i.qty, amount: finalAmt,
-            payment, customer: customer.trim() || 'Walk-in', phone: phone.trim(),
-          }),
-        }).then(async r => { if (!r.ok) throw new Error((await r.json()).error); });
-      }));
-      toast('✅ Bill save ho gaya!');
+      const payload = {
+        customer: customer.trim() || 'Walk-in',
+        phone: phone.trim(),
+        payment,
+        subtotal,
+        discount: discountAmt,
+        total,
+        operator,
+        notes: '',
+        items: items.map(i => ({
+          item_id:   i.item_id,
+          item_name: i.item_name,
+          qty:       i.qty,
+          price:     i.price,
+          amount:    +(i.qty * i.price - (subtotal > 0 ? (i.qty * i.price / subtotal) * discountAmt : 0)).toFixed(2),
+        })),
+      };
+
+      const res  = await fetch('/api/bills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) return toast(data.error || 'Bill save nahi hua', 'error');
+
+      toast(`✅ Bill #${data.bill_no} save ho gaya!`);
       broadcast('sales');
       broadcast('inventory');
       setItems([]); setCustomer(''); setPhone(''); setPayment('cash'); setDiscount('0');

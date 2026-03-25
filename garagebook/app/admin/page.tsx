@@ -3,14 +3,14 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
 import { fmtDate, fmtCurrency, fuzzyMatch } from '@/lib/utils';
-import type { Customer, Return, ReportSummary, DailyReport, TopPart, Sale } from '@/types';
+import type { Customer, Return, ReportSummary, DailyReport, TopPart, Sale, Bill, BillWithItems } from '@/types';
 import { DailyBarChart, TopPartsChart } from '@/components/Charts';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useRole } from '@/hooks/useRole';
 import { broadcast } from '@/lib/sync';
 import { getErrorLog, clearErrorLog } from '@/hooks/useErrorLogger';
 
-type Tab = 'reports' | 'customers' | 'returns' | 'sales' | 'errorlog';
+type Tab = 'reports' | 'customers' | 'returns' | 'sales' | 'bills' | 'errorlog';
 
 export default function AdminPage() {
   const [tab, setTab]             = useState<Tab>('reports');
@@ -32,6 +32,10 @@ export default function AdminPage() {
   const [editForm, setEditForm]       = useState<{ item_name: string; qty: string; amount: string; payment: string; customer: string; phone: string; date: string } | null>(null);
   const [confirmSaleId, setConfirmSaleId] = useState<number | null>(null);
   const [eSaving, setESaving]         = useState(false);
+  const [bills, setBills]             = useState<Bill[]>([]);
+  const [billDetail, setBillDetail]   = useState<BillWithItems | null>(null);
+  const [billLoading, setBillLoading] = useState(false);
+  const [confirmBillId, setConfirmBillId] = useState<number | null>(null);
   const { isOwner } = useRole();
   const [errorLog, setErrorLog] = useState(() => getErrorLog());
 
@@ -73,12 +77,21 @@ export default function AdminPage() {
     } finally { setSalLoading(false); }
   }, []);
 
+  const loadBills = useCallback(async () => {
+    setBillLoading(true);
+    try {
+      const d = await fetch('/api/bills').then(r => r.json());
+      setBills(Array.isArray(d) ? d : []);
+    } finally { setBillLoading(false); }
+  }, []);
+
   useEffect(() => {
     if (tab === 'customers') loadCustomers();
     if (tab === 'returns')   loadReturns();
     if (tab === 'reports')   loadReports();
     if (tab === 'sales')     loadSales();
-  }, [tab, loadCustomers, loadReturns, loadReports, loadSales]);
+    if (tab === 'bills')     loadBills();
+  }, [tab, loadCustomers, loadReturns, loadReports, loadSales, loadBills]);
 
   function openEditSale(s: Sale) {
     setEditSale(s);
@@ -107,6 +120,73 @@ export default function AdminPage() {
     if (!res.ok) return toast('Delete nahi hua', 'error');
     toast('Sale deleted', 'info'); broadcast('sales');
     setConfirmSaleId(null); await loadSales();
+  }
+
+  async function doDeleteBill(id: number) {
+    const res = await fetch(`/api/bills/${id}`, { method: 'DELETE' });
+    if (!res.ok) return toast('Bill delete nahi hua', 'error');
+    toast('Bill deleted', 'info');
+    setConfirmBillId(null);
+    setBillDetail(null);
+    await loadBills();
+  }
+
+  async function openBillDetail(id: number) {
+    const res = await fetch(`/api/bills/${id}`);
+    const data = await res.json();
+    if (!res.ok) return toast('Bill load nahi hua', 'error');
+    setBillDetail(data);
+  }
+
+  function reprintBill(b: BillWithItems) {
+    const win = window.open('', '_blank');
+    if (!win) return;
+    const payLabel = b.payment === 'cash' ? 'Cash 💵' : b.payment === 'online' ? 'Online 📱' : 'Credit / Udhaar 📋';
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"/><title>Bill #${b.bill_no}</title>
+    <style>
+      *{margin:0;padding:0;box-sizing:border-box}
+      body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:#f4f6fb;display:flex;justify-content:center;padding:24px}
+      .card{background:#fff;border-radius:16px;padding:28px 24px;width:380px;box-shadow:0 4px 24px rgba(0,0,0,.10)}
+      .shop{font-size:20px;font-weight:700;color:#1a1a2e;text-align:center}
+      .tagline{font-size:11px;color:#888;text-align:center;margin-top:2px}
+      .divider{border:none;border-top:1.5px dashed #dde3f0;margin:14px 0}
+      .meta{font-size:12px;color:#555;margin:3px 0}
+      .meta span{font-weight:600;color:#1a1a2e}
+      table{width:100%;border-collapse:collapse;margin:10px 0}
+      thead tr{background:#1a1a2e;color:#fff}
+      th{padding:7px 8px;font-size:11px;font-weight:600;text-align:left}
+      th:last-child,td:last-child{text-align:right}
+      td{padding:6px 8px;font-size:12px;border-bottom:1px solid #f0f0f0;color:#333}
+      .tot-row{display:flex;justify-content:space-between;font-size:12px;color:#666;padding:2px 0}
+      .tot-row.grand{font-size:16px;font-weight:700;color:#1a1a2e;border-top:2px solid #1a1a2e;margin-top:6px;padding-top:8px}
+      .badge{display:inline-block;padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;margin-top:12px}
+      .footer{text-align:center;font-size:11px;color:#aaa;margin-top:16px}
+      @media print{body{background:#fff;padding:0}.card{box-shadow:none;border-radius:0;width:100%}@page{margin:8mm}}
+    </style></head><body>
+    <div class="card">
+      <div class="shop">🔧 Porwal Autoparts</div>
+      <div class="tagline">Auto Parts &amp; Garage</div>
+      <hr class="divider"/>
+      <div class="meta">🧾 <span>Bill No:</span> ${b.bill_no}</div>
+      <div class="meta">📅 <span>Date:</span> ${fmtDate(b.date)}</div>
+      ${b.customer !== 'Walk-in' ? `<div class="meta">👤 <span>Customer:</span> ${b.customer}${b.phone ? ` &nbsp;|&nbsp; 📞 ${b.phone}` : ''}</div>` : ''}
+      ${b.operator ? `<div class="meta">👷 <span>Operator:</span> ${b.operator}</div>` : ''}
+      <hr class="divider"/>
+      <table>
+        <thead><tr><th>Part</th><th>Qty</th><th>Rate</th><th>Total</th></tr></thead>
+        <tbody>${b.items.map(i => `<tr><td>${i.item_name}</td><td>${i.qty}</td><td>₹${i.price.toFixed(2)}</td><td>₹${i.amount.toFixed(2)}</td></tr>`).join('')}</tbody>
+      </table>
+      <hr class="divider"/>
+      <div>
+        ${b.discount > 0 ? `<div class="tot-row"><span>Subtotal</span><span>₹${b.subtotal.toFixed(2)}</span></div><div class="tot-row" style="color:#e94560"><span>Discount</span><span>-₹${b.discount.toFixed(2)}</span></div>` : ''}
+        <div class="tot-row grand"><span>TOTAL</span><span>₹${b.total.toFixed(2)}</span></div>
+      </div>
+      <div style="text-align:center"><span class="badge" style="background:${b.payment==='cash'?'#e8f5e9':b.payment==='online'?'#e3f2fd':'#fff3e0'};color:${b.payment==='cash'?'#2e7d32':b.payment==='online'?'#1565c0':'#e65100'}">${payLabel}</span></div>
+      <div class="footer">Thank you for your business! 🙏<br/>Powered by Porwal Autoparts</div>
+    </div>
+    <script>window.onload=()=>window.print()<\/script>
+    </body></html>`);
+    win.document.close();
   }
 
   async function addCustomer() {
@@ -146,6 +226,7 @@ export default function AdminPage() {
 
   const tabs: { key: Tab; label: string; ownerOnly?: boolean }[] = [
     { key: 'reports',   label: '📊 Reports' },
+    { key: 'bills',     label: '🧾 Bills',      ownerOnly: true },
     { key: 'sales',     label: '🛒 Sales',     ownerOnly: true },
     { key: 'customers', label: '👥 Customers' },
     { key: 'returns',   label: '↩️ Returns' },
@@ -344,6 +425,101 @@ export default function AdminPage() {
               message="Ye sale permanently delete karo?"
               onConfirm={() => doDeleteSale(confirmSaleId)}
               onCancel={() => setConfirmSaleId(null)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* BILLS */}
+      {tab === 'bills' && isOwner && (
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <span style={{ fontSize: '13px', color: 'var(--text2)' }}>{bills.length} bills</span>
+            <button className="btn-gray text-sm" onClick={loadBills}>🔄 Refresh</button>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="gb-table">
+              <thead>
+                <tr><th>Bill No</th><th>Date</th><th>Customer</th><th>Items</th><th>Total</th><th>Payment</th><th>Operator</th><th>Action</th></tr>
+              </thead>
+              <tbody>
+                {billLoading ? <LoadingRows cols={8} /> :
+                 bills.length === 0 ? <EmptyRow cols={8} msg="Koi bill nahi" /> :
+                 bills.map(b => (
+                  <tr key={b.id}>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--primary)', fontSize: '12px' }}>{b.bill_no}</td>
+                    <td style={{ fontSize: '12px', color: 'var(--text3)' }}>{fmtDate(b.date)}</td>
+                    <td style={{ fontWeight: 500 }}>{b.customer}</td>
+                    <td style={{ color: 'var(--text2)', fontSize: '12px' }}>—</td>
+                    <td style={{ fontWeight: 700 }}>{fmtCurrency(b.total)}</td>
+                    <td><span className={`badge badge-${b.payment}`}>{b.payment.toUpperCase()}</span></td>
+                    <td style={{ fontSize: '12px', color: 'var(--text3)' }}>{b.operator || '—'}</td>
+                    <td style={{ display: 'flex', gap: '4px' }}>
+                      <button className="btn-sm bg-blue-500 text-white" onClick={() => openBillDetail(b.id)}>👁️ View</button>
+                      <button className="btn-sm bg-red-500 text-white" onClick={() => setConfirmBillId(b.id)}>🗑️</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Bill Detail Modal */}
+          {billDetail && (
+            <div className="modal-overlay" onClick={() => setBillDetail(null)}>
+              <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: '560px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <div>
+                    <h3 style={{ marginBottom: '2px' }}>🧾 Bill #{billDetail.bill_no}</h3>
+                    <span style={{ fontSize: '12px', color: 'var(--text3)' }}>{fmtDate(billDetail.date)}</span>
+                  </div>
+                  <button style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text3)' }} onClick={() => setBillDetail(null)}>✕</button>
+                </div>
+
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', fontSize: '13px' }}>
+                  <span>👤 <b>{billDetail.customer}</b></span>
+                  {billDetail.phone && <span>📞 {billDetail.phone}</span>}
+                  {billDetail.operator && <span>👷 {billDetail.operator}</span>}
+                  <span><span className={`badge badge-${billDetail.payment}`}>{billDetail.payment.toUpperCase()}</span></span>
+                </div>
+
+                <table className="gb-table" style={{ marginBottom: '12px' }}>
+                  <thead><tr><th>Part</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead>
+                  <tbody>
+                    {billDetail.items.map((i, idx) => (
+                      <tr key={idx}>
+                        <td>{i.item_name}</td>
+                        <td>{i.qty}</td>
+                        <td>{fmtCurrency(i.price)}</td>
+                        <td style={{ fontWeight: 600 }}>{fmtCurrency(i.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', fontSize: '13px', alignItems: 'flex-end' }}>
+                  {billDetail.discount > 0 && (
+                    <>
+                      <span style={{ color: 'var(--text2)' }}>Subtotal: {fmtCurrency(billDetail.subtotal)}</span>
+                      <span style={{ color: '#e94560' }}>Discount: -{fmtCurrency(billDetail.discount)}</span>
+                    </>
+                  )}
+                  <span style={{ fontSize: '16px', fontWeight: 700 }}>Total: {fmtCurrency(billDetail.total)}</span>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'flex-end' }}>
+                  <button className="btn-green" onClick={() => reprintBill(billDetail)}>🖨️ Reprint Bill</button>
+                  <button className="btn-gray" onClick={() => setBillDetail(null)}>Close</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {confirmBillId !== null && (
+            <ConfirmModal
+              message="Ye bill permanently delete karo?"
+              onConfirm={() => doDeleteBill(confirmBillId)}
+              onCancel={() => setConfirmBillId(null)}
             />
           )}
         </div>
