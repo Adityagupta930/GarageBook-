@@ -4,6 +4,8 @@ import { toast } from '@/components/Toast';
 import { fuzzyMatch } from '@/lib/utils';
 import { enqueueOfflineSale, useOfflineSync } from '@/hooks/useOfflineSync';
 import { broadcast, listenSync } from '@/lib/sync';
+import { useOperator } from '@/hooks/useOperator';
+import OperatorModal from '@/components/OperatorModal';
 import CustomerAutocomplete from '@/components/CustomerAutocomplete';
 import type { InventoryItem } from '@/types';
 
@@ -36,6 +38,7 @@ export default function SalePage() {
   const searchRef               = useRef<HTMLInputElement>(null);
 
   const { pendingCount } = useOfflineSync();
+  const { operator, asking, input, setInput, confirm, change } = useOperator();
 
   const loadInv = useCallback(async () => {
     const data: InventoryItem[] = await fetch('/api/inventory').then(r => r.json());
@@ -141,13 +144,23 @@ export default function SalePage() {
 
   return (
     <div className={`form-box max-w-2xl${success ? ' success-flash' : ''}`}>
+      {asking && <OperatorModal input={input} setInput={setInput} onConfirm={confirm} />}
+
       <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         Naya Sale Darj Karo
-        {pendingCount > 0 && (
-          <span style={{ fontSize: '11px', background: '#fef9c3', color: '#a16207', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>
-            📴 {pendingCount} pending sync
-          </span>
-        )}
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {operator && (
+            <span style={{ fontSize: '11px', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '2px 8px', borderRadius: '20px', fontWeight: 500, cursor: 'pointer' }}
+              onClick={change} title="Operator badlo">
+              👤 {operator}
+            </span>
+          )}
+          {pendingCount > 0 && (
+            <span style={{ fontSize: '11px', background: '#fef9c3', color: '#a16207', padding: '2px 8px', borderRadius: '20px', fontWeight: 600 }}>
+              📴 {pendingCount} pending sync
+            </span>
+          )}
+        </div>
       </h3>
 
       {/* Fuzzy Search + Dropdown */}

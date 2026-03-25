@@ -3,6 +3,8 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import { fmtDate } from '@/lib/utils';
 import { broadcast, listenSync } from '@/lib/sync';
+import { useOperator } from '@/hooks/useOperator';
+import OperatorModal from '@/components/OperatorModal';
 import CustomerAutocomplete from '@/components/CustomerAutocomplete';
 import type { InventoryItem } from '@/types';
 
@@ -26,6 +28,7 @@ export default function BillPage() {
   const [emailTo, setEmailTo]     = useState('');
   const [sending, setSending]     = useState(false);
   const [imgLoading, setImgLoading] = useState(false);
+  const { operator, asking, input, setInput, confirm, change } = useOperator();
 
   const loadInv = useCallback(async () => {
     const data: InventoryItem[] = await fetch('/api/inventory').then(r => r.json());
@@ -312,6 +315,7 @@ export default function BillPage() {
       <hr class="divider"/>
       <div class="meta">📅 <span>Date:</span> ${dateStr}</div>
       ${customer ? `<div class="meta">👤 <span>Customer:</span> ${customer}${phone ? ` &nbsp;|&nbsp; 📞 ${phone}` : ''}</div>` : ''}
+      ${operator ? `<div class="meta">👷 <span>Operator:</span> ${operator}</div>` : ''}
       <hr class="divider"/>
       <table>
         <thead><tr><th>Part</th><th>Qty</th><th>Rate</th><th>Total</th></tr></thead>
@@ -336,8 +340,18 @@ export default function BillPage() {
 
   return (
     <div className="max-w-2xl">
+      {asking && <OperatorModal input={input} setInput={setInput} onConfirm={confirm} />}
+
       <div className="form-box">
-        <h3>Shop Details</h3>
+        <h3 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          Shop Details
+          {operator && (
+            <span style={{ fontSize: '11px', background: 'var(--surface2)', border: '1px solid var(--border)', color: 'var(--text2)', padding: '2px 8px', borderRadius: '20px', fontWeight: 500, cursor: 'pointer' }}
+              onClick={change} title="Operator badlo">
+              👤 {operator}
+            </span>
+          )}
+        </h3>
         <input className="gb-input w-full" placeholder="Shop naam" value={shopName}
           onChange={e => onShopNameChange(e.target.value)} />
       </div>
