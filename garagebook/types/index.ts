@@ -67,3 +67,32 @@ export interface TopPart {
   total_qty: number;
   total_amount: number;
 }
+
+export interface Bill {
+  id: number;
+  bill_no: string;
+  customer: string;
+  phone: string;
+  payment: 'cash' | 'online' | 'udhaar';
+  subtotal: number;
+  discount: number;
+  total: number;
+  operator: string;
+  notes: string;
+  date: string;
+}
+
+export interface BillItem {
+  id: number;
+  bill_id: number;
+  item_id: number | null;
+  item_name: string;
+  qty: number;
+  price: number;
+  buy_price: number;
+  amount: number;
+}
+
+export interface BillWithItems extends Bill {
+  items: BillItem[];
+}
