@@ -2,6 +2,7 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { Role } from '@/hooks/useRole';
+import { useLang } from '@/hooks/useLang';
 import type { InventoryItem } from '@/types';
 
 const titles: Record<string, { label: string; icon: string }> = {
@@ -26,11 +27,19 @@ export default function Topbar({ onMenuClick, role, setRole, isOwner }: Props) {
   const [dark, setDark]           = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
   const [lowItems, setLowItems]   = useState<InventoryItem[]>([]);
+  const [online, setOnline]       = useState(true);
+  const { lang, setLang, t }      = useLang();
   const page = titles[path] ?? { label: 'GarageBook', icon: '🔧' };
 
   useEffect(() => {
     const saved = localStorage.getItem('gb_theme');
     if (saved === 'dark') { document.documentElement.classList.add('dark'); setDark(true); }
+    setOnline(navigator.onLine);
+    const on  = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener('online', on);
+    window.addEventListener('offline', off);
+    return () => { window.removeEventListener('online', on); window.removeEventListener('offline', off); };
   }, []);
 
   // Load low-stock items for alert bell
@@ -67,6 +76,14 @@ export default function Topbar({ onMenuClick, role, setRole, isOwner }: Props) {
           Ctrl+S Sale · Ctrl+I Inventory
         </span>
 
+        {/* Online/Offline indicator */}
+        <span title={online ? 'Online' : 'Offline — sales queue mein jayenge'} style={{
+          width: '8px', height: '8px', borderRadius: '50%',
+          background: online ? '#22c55e' : '#ef4444',
+          display: 'inline-block', flexShrink: 0,
+          boxShadow: online ? '0 0 0 2px rgba(34,197,94,.25)' : '0 0 0 2px rgba(239,68,68,.25)',
+        }} />
+
         {/* Smart Alert Bell */}
         <div style={{ position: 'relative' }}>
           <button className="icon-btn" onClick={() => setAlertOpen(o => !o)}
@@ -93,11 +110,11 @@ export default function Topbar({ onMenuClick, role, setRole, isOwner }: Props) {
               width: '260px', zIndex: 100, overflow: 'hidden',
             }}>
               <div style={{ padding: '10px 14px', borderBottom: '1px solid var(--border)', fontSize: '12px', fontWeight: 600, color: 'var(--text2)' }}>
-                ⚠️ Stock Alerts ({lowItems.length})
+                ⚠️ {t.stockAlert} ({lowItems.length})
               </div>
               {lowItems.length === 0 ? (
                 <div style={{ padding: '14px', fontSize: '13px', color: 'var(--text3)', textAlign: 'center' }}>
-                  ✅ Sab stock theek hai
+                  ✅ {t.allGood}
                 </div>
               ) : (
                 <div style={{ maxHeight: '240px', overflowY: 'auto' }}>
@@ -122,7 +139,16 @@ export default function Topbar({ onMenuClick, role, setRole, isOwner }: Props) {
           )}
         </div>
 
-        {/* Role Switcher — owner only sees this in production; here both can switch for demo */}
+        {/* Lang toggle */}
+        <button
+          onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}
+          className="icon-btn"
+          title={lang === 'en' ? 'Hindi mein switch karo' : 'Switch to English'}
+          style={{ fontSize: '12px', fontWeight: 700, width: 'auto', padding: '0 8px' }}>
+          {lang === 'en' ? 'हि' : 'EN'}
+        </button>
+
+        {/* Role Switcher */}
         <select
           value={role}
           onChange={e => setRole(e.target.value as Role)}
@@ -132,8 +158,8 @@ export default function Topbar({ onMenuClick, role, setRole, isOwner }: Props) {
             color: isOwner ? 'var(--primary)' : 'var(--text2)', cursor: 'pointer', outline: 'none',
           }}
           title="Switch role">
-          <option value="owner">👑 Owner</option>
-          <option value="staff">👤 Staff</option>
+          <option value="owner">👑 {t.owner}</option>
+          <option value="staff">👤 {t.staff}</option>
         </select>
 
         {/* Dark mode */}

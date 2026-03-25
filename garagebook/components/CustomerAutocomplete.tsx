@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
+import { fuzzyMatch } from '@/lib/utils';
 import type { Customer } from '@/types';
 
 interface Props {
@@ -30,7 +31,7 @@ export default function CustomerAutocomplete({ value, onChange, placeholder, req
   }, []);
 
   const filtered = value.trim()
-    ? customers.filter(c => c.name.toLowerCase().includes(value.toLowerCase()) || c.phone?.includes(value))
+    ? customers.filter(c => fuzzyMatch(c.name + ' ' + (c.phone || ''), value))
     : customers.slice(0, 6);
 
   function select(c: Customer) {

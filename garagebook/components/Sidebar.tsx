@@ -1,21 +1,30 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useLang } from '@/hooks/useLang';
 
-const links = [
-  { href: '/',          icon: '▦',  label: 'Dashboard',  ownerOnly: false },
-  { href: '/inventory', icon: '📦', label: 'Products',   ownerOnly: false },
-  { href: '/sale',      icon: '🛒', label: 'New Sale',   ownerOnly: false },
-  { href: '/bill',      icon: '🧾', label: 'Bill',       ownerOnly: false },
-  { href: '/credit',    icon: '📋', label: 'Credit',     ownerOnly: true  },
-  { href: '/history',   icon: '🕓', label: 'History',    ownerOnly: true  },
-  { href: '/admin',     icon: '📊', label: 'Reports',    ownerOnly: true  },
+interface NavLink { href: string; icon: string; labelKey: keyof ReturnType<typeof useLang>['t']; ownerOnly: boolean; }
+
+const links: NavLink[] = [
+  { href: '/',          icon: '▦',  labelKey: 'dashboard', ownerOnly: false },
+  { href: '/inventory', icon: '📦', labelKey: 'products',  ownerOnly: false },
+  { href: '/sale',      icon: '🛒', labelKey: 'newSale',   ownerOnly: false },
+  { href: '/bill',      icon: '🧾', labelKey: 'bill',      ownerOnly: false },
+  { href: '/credit',    icon: '📋', labelKey: 'credit',    ownerOnly: true  },
+  { href: '/history',   icon: '🕓', labelKey: 'history',   ownerOnly: true  },
+  { href: '/admin',     icon: '📊', labelKey: 'reports',   ownerOnly: true  },
 ];
+
+const shortcuts: Record<string, string> = {
+  '/': 'Ctrl+D', '/sale': 'Ctrl+S', '/inventory': 'Ctrl+I',
+  '/bill': 'Ctrl+B', '/history': 'Ctrl+H',
+};
 
 interface Props { onClose?: () => void; isOwner: boolean; }
 
 export default function Sidebar({ onClose, isOwner }: Props) {
-  const path = usePathname();
+  const path    = usePathname();
+  const { t }   = useLang();
   const visible = links.filter(l => isOwner || !l.ownerOnly);
 
   return (
@@ -35,9 +44,15 @@ export default function Sidebar({ onClose, isOwner }: Props) {
         {visible.map(l => (
           <Link key={l.href} href={l.href}
             onClick={onClose}
-            className={`sidebar-link ${path === l.href ? 'active' : ''}`}>
+            className={`sidebar-link ${path === l.href ? 'active' : ''}`}
+            title={shortcuts[l.href] ? `Shortcut: ${shortcuts[l.href]}` : undefined}>
             <span className="icon">{l.icon}</span>
-            {l.label}
+            <span style={{ flex: 1 }}>{t[l.labelKey]}</span>
+            {shortcuts[l.href] && (
+              <span style={{ fontSize: '9px', color: '#484f58', fontFamily: 'monospace', letterSpacing: '.02em' }}>
+                {shortcuts[l.href]}
+              </span>
+            )}
           </Link>
         ))}
       </nav>
@@ -46,8 +61,8 @@ export default function Sidebar({ onClose, isOwner }: Props) {
         <div className="sidebar-user">
           <div className="sidebar-avatar">{isOwner ? 'O' : 'S'}</div>
           <div className="sidebar-user-info">
-            <p>{isOwner ? 'Owner' : 'Staff'}</p>
-            <span>{isOwner ? 'Full Access' : 'Sales Only'}</span>
+            <p>{isOwner ? t.owner : t.staff}</p>
+            <span>{isOwner ? t.fullAccess : t.salesOnly}</span>
           </div>
         </div>
       </div>

@@ -19,7 +19,7 @@ export default function ShellClient({ children }: { children: React.ReactNode })
   }, [setRole]);
 
   useKeyboardShortcuts();
-  useInactivity(handleLogout);
+  useInactivity(isOwner ? handleLogout : () => {});
   useErrorLogger();
   useOfflineSync();
 
