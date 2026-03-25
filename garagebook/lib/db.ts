@@ -58,6 +58,29 @@ export async function initDb() {
       reason    TEXT    DEFAULT '',
       date      TEXT    DEFAULT (datetime('now','localtime'))
     );
+    CREATE TABLE IF NOT EXISTS bills (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      bill_no    TEXT    NOT NULL UNIQUE,
+      customer   TEXT    DEFAULT 'Walk-in',
+      phone      TEXT    DEFAULT '',
+      payment    TEXT    NOT NULL DEFAULT 'cash',
+      subtotal   REAL    NOT NULL DEFAULT 0,
+      discount   REAL    NOT NULL DEFAULT 0,
+      total      REAL    NOT NULL DEFAULT 0,
+      operator   TEXT    DEFAULT '',
+      notes      TEXT    DEFAULT '',
+      date       TEXT    DEFAULT (datetime('now','localtime'))
+    );
+    CREATE TABLE IF NOT EXISTS bill_items (
+      id        INTEGER PRIMARY KEY AUTOINCREMENT,
+      bill_id   INTEGER NOT NULL REFERENCES bills(id) ON DELETE CASCADE,
+      item_id   INTEGER REFERENCES inventory(id) ON DELETE SET NULL,
+      item_name TEXT    NOT NULL,
+      qty       INTEGER NOT NULL,
+      price     REAL    NOT NULL,
+      buy_price REAL    NOT NULL DEFAULT 0,
+      amount    REAL    NOT NULL
+    );
   `);
   // Safe migrations
   const migrations = [
@@ -71,6 +94,8 @@ export async function initDb() {
     "CREATE INDEX IF NOT EXISTS idx_sales_udhaar  ON sales(udhaar_paid) WHERE payment='udhaar'",
     "CREATE INDEX IF NOT EXISTS idx_inv_name      ON inventory(name)",
     "CREATE INDEX IF NOT EXISTS idx_inv_stock     ON inventory(stock)",
+    "CREATE INDEX IF NOT EXISTS idx_bills_date     ON bills(date DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_bill_items_bid ON bill_items(bill_id)",
   ];
   for (const sql of migrations) {
     try { await db.execute(sql); } catch { /* column already exists */ }
