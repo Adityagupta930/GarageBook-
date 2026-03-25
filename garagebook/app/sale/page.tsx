@@ -32,6 +32,7 @@ export default function SalePage() {
   const [saving, setSaving]     = useState(false);
   const [success, setSuccess]   = useState(false);
   const [lastBill, setLastBill] = useState(false);
+  const [notes, setNotes]       = useState('');
   const searchRef               = useRef<HTMLInputElement>(null);
 
   const { pendingCount } = useOfflineSync();
@@ -80,7 +81,7 @@ export default function SalePage() {
 
   function reset() {
     setItemId(''); setQty('1'); setPrice(''); setDiscount('0');
-    setCustomer(''); setPhone(''); setPayment('cash'); setSearch('');
+    setCustomer(''); setPhone(''); setPayment('cash'); setSearch(''); setNotes('');
   }
 
   async function recordSale() {
@@ -96,6 +97,7 @@ export default function SalePage() {
       item_id: +itemId, item_name: item.name + (item.company ? ` (${item.company})` : ''),
       qty: +qty, amount: +finalAmount,
       payment, customer: customer.trim() || 'Walk-in', phone: phone.trim(),
+      notes: notes.trim(),
     };
 
     // ── Optimistic UI ──────────────────────────────────────────
@@ -266,6 +268,8 @@ export default function SalePage() {
         />
         <input className="gb-input" placeholder="Phone (optional)"
           value={phone} onChange={e => setPhone(e.target.value)} />
+        <input className="gb-input w-full" placeholder="📝 Notes / Remarks (optional)"
+          value={notes} onChange={e => setNotes(e.target.value)} />
         <button className="btn w-full mt-1" onClick={recordSale} disabled={saving || !itemId}>
           {saving ? '⏳ Saving...' : '✅ Sale Save Karo (Ctrl+Enter)'}
         </button>
