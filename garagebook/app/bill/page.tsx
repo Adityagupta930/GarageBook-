@@ -35,7 +35,8 @@ export default function BillPage() {
   useEffect(() => {
     loadInv();
     const saved = localStorage.getItem(SHOP_KEY);
-    if (saved) setShopName(saved);
+    if (saved && saved !== 'GarageBook Auto Parts') setShopName(saved);
+    else if (!saved) localStorage.setItem(SHOP_KEY, 'Porwal Autoparts');
     const lastEmail = localStorage.getItem(EMAIL_KEY);
     if (lastEmail) setEmailTo(lastEmail);
     const unsync = listenSync(['inventory'], loadInv);
