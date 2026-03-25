@@ -39,6 +39,10 @@ export async function POST(req: NextRequest) {
     const item = itemRes.rows[0] as unknown as { id: number; stock: number; buy_price: number };
     if (Number(item.stock) < +qty) return apiError(`Sirf ${item.stock} stock bacha hai`);
 
+    // Margin guard — warn if selling below cost (allow but flag)
+    const unitPrice = +amount / +qty;
+    const belowCost = unitPrice < Number(item.buy_price);
+
     const result = await db.batch([
       { sql: 'UPDATE inventory SET stock = stock - ? WHERE id = ?', args: [+qty, item_id] },
       {
@@ -49,7 +53,7 @@ export async function POST(req: NextRequest) {
       },
     ], 'write');
 
-    return apiOk({ id: Number(result[1].lastInsertRowid) }, 201);
+    return apiOk({ id: Number(result[1].lastInsertRowid), belowCost }, 201);
   } catch (e) {
     console.error('[POST /api/sales]', e);
     return apiError('Sale save karne mein error', 500);

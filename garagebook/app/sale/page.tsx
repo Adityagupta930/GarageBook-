@@ -19,6 +19,7 @@ function bumpFreq(id: number) {
 
 export default function SalePage() {
   const [inv, setInv]           = useState<InventoryItem[]>([]);
+  const [recentSales, setRecentSales] = useState<{item_name:string; qty:number; amount:number; payment:string}[]>([]);
   const [search, setSearch]     = useState('');
   const [showDrop, setShowDrop] = useState(false);
   const [itemId, setItemId]     = useState('');
@@ -46,14 +47,18 @@ export default function SalePage() {
     return unsync;
   }, [loadInv]);
 
-  // Keyboard shortcut: Enter to submit when form is filled
+  // Keyboard shortcut: Ctrl+Enter to submit
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && e.ctrlKey) recordSale();
+      if (e.key === 'Enter' && e.ctrlKey) {
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement).tagName)) return;
+        recordSale();
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [itemId, qty, price, discount, payment, customer, phone, inv]);
 
   const freq = getFreq();
   const filtered = inv
@@ -68,7 +73,7 @@ export default function SalePage() {
   function selectItem(item: InventoryItem) {
     setItemId(String(item.id));
     setPrice(String(item.price));
-    setSearch(item.name);
+    setSearch(item.name + (item.company ? ` (${item.company})` : ''));
     setDiscount('0');
     setShowDrop(false);
   }
@@ -88,7 +93,7 @@ export default function SalePage() {
     if (+qty > item.stock) return toast(`Sirf ${item.stock} stock bacha hai!`, 'error');
 
     const payload = {
-      item_id: +itemId, item_name: item.name,
+      item_id: +itemId, item_name: item.name + (item.company ? ` (${item.company})` : ''),
       qty: +qty, amount: +finalAmount,
       payment, customer: customer.trim() || 'Walk-in', phone: phone.trim(),
     };
@@ -109,11 +114,12 @@ export default function SalePage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        // Rollback optimistic update
         await loadInv();
         return toast(data.error || 'Sale save nahi hua', 'error');
       }
-      toast(`✅ ${item.name} ×${qty} = ₹${finalAmount} (${payment.toUpperCase()})`);
+      if (data.belowCost) toast(`⚠️ ${item.name} — cost price se kam mein becha!`, 'info');
+      else toast(`✅ ${item.name} ×${qty} = ₹${finalAmount} (${payment.toUpperCase()})`);
+      setRecentSales(p => [{ item_name: item.name, qty: +qty, amount: +finalAmount, payment }, ...p].slice(0, 5));
       broadcast('sales');
       broadcast('inventory');
       sessionStorage.setItem('gb_pending_bill', JSON.stringify({
@@ -199,7 +205,7 @@ export default function SalePage() {
           borderRadius: '8px', padding: '10px 14px', marginBottom: '12px',
           display: 'flex', flexWrap: 'wrap', gap: '16px', fontSize: '13px',
         }}>
-          <span>📦 <b>{selectedItem.name}</b></span>
+          <span>📦 <b>{selectedItem.name}</b>{selectedItem.company && <span style={{ color: 'var(--text3)', fontSize: '12px' }}> · {selectedItem.company}</span>}</span>
           <span>Rate: <b style={{ color: 'var(--primary)' }}>₹{selectedItem.price}</b></span>
           <span>Stock: <b style={{ color: selectedItem.stock <= 3 ? '#f97316' : '#16a34a' }}>{selectedItem.stock}</b></span>
           {baseAmount > 0 && <span>Subtotal: <b>₹{baseAmount.toFixed(2)}</b></span>}
@@ -270,6 +276,38 @@ export default function SalePage() {
           </a>
         )}
       </div>
+
+      {/* Recent Sales this session */}
+      {recentSales.length > 0 && (
+        <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+          <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text2)', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '8px' }}>
+            🕒 Is session ki sales
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {recentSales.map((s, i) => (
+              <div key={i} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '6px 10px', borderRadius: '6px',
+                background: i === 0 ? 'rgba(34,197,94,.08)' : 'var(--surface2)',
+                fontSize: '12px', border: '1px solid var(--border)',
+              }}>
+                <span style={{ color: 'var(--text)', fontWeight: i === 0 ? 600 : 400 }}>
+                  {i === 0 && <span style={{ color: '#16a34a', marginRight: '4px' }}>✓</span>}
+                  {s.item_name} ×{s.qty}
+                </span>
+                <span style={{ color: 'var(--text2)' }}>
+                  <b style={{ color: 'var(--text)' }}>₹{s.amount.toFixed(2)}</b>
+                  {' · '}
+                  <span style={{
+                    color: s.payment === 'cash' ? '#16a34a' : s.payment === 'online' ? '#2563eb' : '#ea580c',
+                    fontWeight: 600, fontSize: '11px',
+                  }}>{s.payment.toUpperCase()}</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

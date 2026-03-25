@@ -2,15 +2,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
-import { fmtDate, fmtCurrency } from '@/lib/utils';
-import type { Customer, Return, ReportSummary, DailyReport, TopPart } from '@/types';
+import { fmtDate, fmtCurrency, fuzzyMatch } from '@/lib/utils';
+import type { Customer, Return, ReportSummary, DailyReport, TopPart, Sale } from '@/types';
 import { DailyBarChart, TopPartsChart } from '@/components/Charts';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useRole } from '@/hooks/useRole';
 import { broadcast } from '@/lib/sync';
 import { getErrorLog, clearErrorLog } from '@/hooks/useErrorLogger';
 
-type Tab = 'reports' | 'customers' | 'returns' | 'errorlog';
+type Tab = 'reports' | 'customers' | 'returns' | 'sales' | 'errorlog';
 
 export default function AdminPage() {
   const [tab, setTab]             = useState<Tab>('reports');
@@ -25,6 +25,13 @@ export default function AdminPage() {
   const [cForm, setCForm]         = useState({ name: '', phone: '', address: '' });
   const [rForm, setRForm]         = useState({ item_name: '', qty: '', amount: '', reason: '' });
   const [confirmCust, setConfirmCust] = useState<{ id: number; name: string } | null>(null);
+  const [sales, setSales]             = useState<Sale[]>([]);
+  const [saleSearch, setSaleSearch]   = useState('');
+  const [salLoading, setSalLoading]   = useState(false);
+  const [editSale, setEditSale]       = useState<Sale | null>(null);
+  const [editForm, setEditForm]       = useState<{ item_name: string; qty: string; amount: string; payment: string; customer: string; phone: string; date: string } | null>(null);
+  const [confirmSaleId, setConfirmSaleId] = useState<number | null>(null);
+  const [eSaving, setESaving]         = useState(false);
   const { isOwner } = useRole();
   const [errorLog, setErrorLog] = useState(() => getErrorLog());
 
@@ -58,11 +65,49 @@ export default function AdminPage() {
     } finally { setSLoading(false); }
   }, []);
 
+  const loadSales = useCallback(async () => {
+    setSalLoading(true);
+    try {
+      const d = await fetch('/api/sales').then(r => r.json());
+      setSales(Array.isArray(d) ? d : []);
+    } finally { setSalLoading(false); }
+  }, []);
+
   useEffect(() => {
     if (tab === 'customers') loadCustomers();
     if (tab === 'returns')   loadReturns();
     if (tab === 'reports')   loadReports();
-  }, [tab, loadCustomers, loadReturns, loadReports]);
+    if (tab === 'sales')     loadSales();
+  }, [tab, loadCustomers, loadReturns, loadReports, loadSales]);
+
+  function openEditSale(s: Sale) {
+    setEditSale(s);
+    setEditForm({ item_name: s.item_name, qty: String(s.qty), amount: String(s.amount), payment: s.payment, customer: s.customer, phone: s.phone || '', date: s.date.slice(0, 16) });
+  }
+
+  async function saveEditSale() {
+    if (!editSale || !editForm) return;
+    if (!editForm.item_name.trim()) return toast('Item naam zaroori!', 'error');
+    if (editForm.payment === 'udhaar' && !editForm.customer.trim()) return toast('Customer naam zaroori!', 'error');
+    setESaving(true);
+    try {
+      const res = await fetch(`/api/sales/${editSale.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ item_name: editForm.item_name.trim(), qty: +editForm.qty, amount: +editForm.amount, payment: editForm.payment, customer: editForm.customer.trim() || 'Walk-in', phone: editForm.phone.trim(), date: editForm.date.replace('T', ' ') + ':00' }),
+      });
+      const data = await res.json();
+      if (!res.ok) return toast(data.error || 'Update nahi hua', 'error');
+      toast('✅ Sale updated!'); broadcast('sales');
+      setEditSale(null); setEditForm(null); await loadSales();
+    } finally { setESaving(false); }
+  }
+
+  async function doDeleteSale(id: number) {
+    const res = await fetch(`/api/sales/${id}`, { method: 'DELETE' });
+    if (!res.ok) return toast('Delete nahi hua', 'error');
+    toast('Sale deleted', 'info'); broadcast('sales');
+    setConfirmSaleId(null); await loadSales();
+  }
 
   async function addCustomer() {
     if (!cForm.name.trim()) return toast('Customer naam zaroori!', 'error');
@@ -101,6 +146,7 @@ export default function AdminPage() {
 
   const tabs: { key: Tab; label: string; ownerOnly?: boolean }[] = [
     { key: 'reports',   label: '📊 Reports' },
+    { key: 'sales',     label: '🛒 Sales',     ownerOnly: true },
     { key: 'customers', label: '👥 Customers' },
     { key: 'returns',   label: '↩️ Returns' },
     { key: 'errorlog',  label: '🛠️ Error Log', ownerOnly: true },
@@ -205,6 +251,99 @@ export default function AdminPage() {
               message={`"${confirmCust.name}" permanently delete karo?`}
               onConfirm={() => doDeleteCustomer(confirmCust.id, confirmCust.name)}
               onCancel={() => setConfirmCust(null)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* SALES — Admin Edit */}
+      {tab === 'sales' && isOwner && (
+        <div>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <input className="gb-input" style={{ maxWidth: '280px' }} placeholder="🔍 Part / Customer search..." value={saleSearch} onChange={e => setSaleSearch(e.target.value)} />
+            <button className="btn-gray text-sm" onClick={loadSales}>🔄 Refresh</button>
+            <span style={{ fontSize: '12px', color: 'var(--text3)', marginLeft: 'auto' }}>{sales.length} records</span>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="gb-table">
+              <thead><tr><th>Date</th><th>Part</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Customer</th><th>Actions</th></tr></thead>
+              <tbody>
+                {salLoading ? <LoadingRows cols={7} /> :
+                 sales.filter(s => !saleSearch || fuzzyMatch(s.item_name + ' ' + s.customer, saleSearch))
+                 .map(s => (
+                  <tr key={s.id}>
+                    <td style={{ fontSize: '12px', color: 'var(--text3)' }}>{fmtDate(s.date)}</td>
+                    <td style={{ fontWeight: 500 }}>{s.item_name}</td>
+                    <td>{s.qty}</td>
+                    <td style={{ fontWeight: 600 }}>{fmtCurrency(s.amount)}</td>
+                    <td><span className={`badge badge-${s.payment}`}>{s.payment.toUpperCase()}</span></td>
+                    <td>{s.customer}</td>
+                    <td style={{ display: 'flex', gap: '4px' }}>
+                      <button className="btn-sm bg-blue-500 text-white" onClick={() => openEditSale(s)}>✏️</button>
+                      <button className="btn-sm bg-red-500 text-white" onClick={() => setConfirmSaleId(s.id)}>🗑️</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Edit Modal */}
+          {editSale && editForm && (
+            <div className="modal-overlay" onClick={() => { setEditSale(null); setEditForm(null); }}>
+              <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+                <h3>✏️ Sale Edit — #{editSale.id}</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div>
+                    <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Part Name</label>
+                    <input className="gb-input w-full mt-1" value={editForm.item_name} onChange={e => setEditForm(p => p ? { ...p, item_name: e.target.value } : p)} />
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '90px' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Qty</label>
+                      <input className="gb-input w-full mt-1" type="number" min="1" value={editForm.qty} onChange={e => setEditForm(p => p ? { ...p, qty: e.target.value } : p)} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: '110px' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Amount ₹</label>
+                      <input className="gb-input w-full mt-1" type="number" min="0" value={editForm.amount} onChange={e => setEditForm(p => p ? { ...p, amount: e.target.value } : p)} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: '130px' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Payment</label>
+                      <select className="gb-input w-full mt-1" value={editForm.payment} onChange={e => setEditForm(p => p ? { ...p, payment: e.target.value } : p)}>
+                        <option value="cash">💵 Cash</option>
+                        <option value="online">📱 Online</option>
+                        <option value="udhaar">📋 Credit</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '140px' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Customer</label>
+                      <input className="gb-input w-full mt-1" value={editForm.customer} onChange={e => setEditForm(p => p ? { ...p, customer: e.target.value } : p)} />
+                    </div>
+                    <div style={{ flex: 1, minWidth: '120px' }}>
+                      <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Phone</label>
+                      <input className="gb-input w-full mt-1" value={editForm.phone} onChange={e => setEditForm(p => p ? { ...p, phone: e.target.value } : p)} />
+                    </div>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Date & Time</label>
+                    <input className="gb-input w-full mt-1" type="datetime-local" value={editForm.date} onChange={e => setEditForm(p => p ? { ...p, date: e.target.value } : p)} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '20px' }}>
+                  <button className="btn-gray" onClick={() => { setEditSale(null); setEditForm(null); }}>Cancel</button>
+                  <button className="btn" onClick={saveEditSale} disabled={eSaving}>{eSaving ? '⏳...' : '💾 Save'}</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {confirmSaleId !== null && (
+            <ConfirmModal
+              message="Ye sale permanently delete karo?"
+              onConfirm={() => doDeleteSale(confirmSaleId)}
+              onCancel={() => setConfirmSaleId(null)}
             />
           )}
         </div>

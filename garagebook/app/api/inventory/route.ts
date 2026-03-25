@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
     if (price == null || isNaN(+price) || +price < 0) return apiError('Valid selling price daalo');
     if (buy_price == null || isNaN(+buy_price) || +buy_price < 0) return apiError('Valid buy price daalo');
 
-    const exists = await db.execute({ sql: 'SELECT id FROM inventory WHERE LOWER(name) = LOWER(?)', args: [name.trim()] });
-    if (exists.rows.length) return apiError('Ye part pehle se exist karta hai', 409);
+    const exists = await db.execute({ sql: 'SELECT id FROM inventory WHERE LOWER(name) = LOWER(?) AND LOWER(COALESCE(company,\'\')) = LOWER(?)', args: [name.trim(), company?.trim() || ''] });
+    if (exists.rows.length) return apiError(company?.trim() ? `"${name.trim()}" (${company.trim()}) pehle se exist karta hai` : `"${name.trim()}" pehle se exist karta hai`, 409);
 
     if (sku?.trim()) {
       const skuExists = await db.execute({ sql: 'SELECT id FROM inventory WHERE sku = ?', args: [sku.trim()] });

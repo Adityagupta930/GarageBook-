@@ -3,17 +3,23 @@ import { useEffect, useState, useCallback } from 'react';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
 import { toast } from '@/components/Toast';
 import ConfirmModal from '@/components/ConfirmModal';
-import { fmtDate, fmtCurrency } from '@/lib/utils';
+import { fmtDate, fmtCurrency, fuzzyMatch } from '@/lib/utils';
 import { listenSync, broadcast } from '@/lib/sync';
 import type { Sale } from '@/types';
 
+type EditForm = { item_name: string; qty: string; amount: string; payment: string; customer: string; phone: string; date: string; };
+
 export default function HistoryPage() {
-  const [sales, setSales]     = useState<Sale[]>([]);
-  const [date, setDate]       = useState('');
-  const [payment, setPayment] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState('');
+  const [sales, setSales]         = useState<Sale[]>([]);
+  const [date, setDate]           = useState('');
+  const [payment, setPayment]     = useState('');
+  const [search, setSearch]       = useState('');
+  const [loading, setLoading]     = useState(true);
+  const [error, setError]         = useState('');
   const [confirmId, setConfirmId] = useState<number | null>(null);
+  const [editSale, setEditSale]   = useState<Sale | null>(null);
+  const [editForm, setEditForm]   = useState<EditForm | null>(null);
+  const [saving, setSaving]       = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -37,8 +43,48 @@ export default function HistoryPage() {
     return () => { document.removeEventListener('visibilitychange', onVisible); unsync(); };
   }, [load]);
 
-  async function deleteSale(id: number) {
-    setConfirmId(id);
+  function openEdit(s: Sale) {
+    setEditSale(s);
+    setEditForm({
+      item_name: s.item_name,
+      qty:       String(s.qty),
+      amount:    String(s.amount),
+      payment:   s.payment,
+      customer:  s.customer,
+      phone:     s.phone || '',
+      date:      s.date.slice(0, 16), // datetime-local format
+    });
+  }
+
+  async function saveEdit() {
+    if (!editSale || !editForm) return;
+    if (!editForm.item_name.trim()) return toast('Item naam zaroori!', 'error');
+    if (!editForm.qty || +editForm.qty <= 0) return toast('Valid qty daalo!', 'error');
+    if (editForm.payment === 'udhaar' && !editForm.customer.trim()) return toast('Customer naam zaroori!', 'error');
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/sales/${editSale.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          item_name: editForm.item_name.trim(),
+          qty:       +editForm.qty,
+          amount:    +editForm.amount,
+          payment:   editForm.payment,
+          customer:  editForm.customer.trim() || 'Walk-in',
+          phone:     editForm.phone.trim(),
+          date:      editForm.date.replace('T', ' ') + ':00',
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) return toast(data.error || 'Update nahi hua', 'error');
+      toast('✅ Sale update ho gaya!');
+      broadcast('sales');
+      setEditSale(null); setEditForm(null);
+      await load();
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function doDelete(id: number) {
@@ -50,11 +96,19 @@ export default function HistoryPage() {
     await load();
   }
 
-  const total = sales.reduce((a, s) => a + s.amount, 0);
+  const ef = (f: keyof EditForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setEditForm(p => p ? { ...p, [f]: e.target.value } : p);
+
+  const filtered = sales.filter(s =>
+    !search || fuzzyMatch(s.item_name + ' ' + s.customer, search)
+  );
+  const total = filtered.reduce((a, s) => a + s.amount, 0);
 
   return (
     <div>
+      {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-4 items-center">
+        <input className="gb-input max-w-xs" placeholder="🔍 Part / Customer search..." value={search} onChange={e => setSearch(e.target.value)} />
         <input type="date" className="gb-input max-w-xs" value={date} onChange={e => setDate(e.target.value)} />
         <select className="gb-input max-w-xs" value={payment} onChange={e => setPayment(e.target.value)}>
           <option value="">All Payments</option>
@@ -63,35 +117,94 @@ export default function HistoryPage() {
           <option value="udhaar">📋 Credit</option>
         </select>
         <button className="btn-gray text-sm px-3 py-2 rounded-lg"
-          onClick={() => { setDate(''); setPayment(''); }}>✖ Clear</button>
-        {!loading && sales.length > 0 && (
+          onClick={() => { setDate(''); setPayment(''); setSearch(''); }}>✖ Clear</button>
+        {!loading && filtered.length > 0 && (
           <span className="text-sm text-gray-600 ml-auto">
-            {sales.length} records — <span className="font-bold text-green-700">{fmtCurrency(total)}</span>
+            {filtered.length} records — <span className="font-bold text-green-700">{fmtCurrency(total)}</span>
           </span>
         )}
       </div>
 
       <table className="gb-table">
-        <thead><tr><th>Date</th><th>Part</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Customer</th><th></th></tr></thead>
+        <thead><tr><th>Date</th><th>Part</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Customer</th><th>Actions</th></tr></thead>
         <tbody>
           {loading ? <LoadingRows cols={7} /> :
            error   ? <ErrorRow cols={7} msg={error} /> :
-           sales.length === 0 ? <EmptyRow cols={7} msg="Koi record nahi mila" /> :
-           sales.map(s => (
+           filtered.length === 0 ? <EmptyRow cols={7} msg="Koi record nahi mila" /> :
+           filtered.map(s => (
             <tr key={s.id}>
               <td className="text-xs text-gray-500">{fmtDate(s.date)}</td>
-              <td>{s.item_name}</td>
+              <td className="font-medium">{s.item_name}</td>
               <td>{s.qty}</td>
-              <td>{fmtCurrency(s.amount)}</td>
+              <td className="font-semibold">{fmtCurrency(s.amount)}</td>
               <td><span className={`badge badge-${s.payment}`}>{s.payment.toUpperCase()}</span></td>
-              <td>{s.customer}</td>
-              <td>
-                <button className="btn-sm bg-red-500 text-white" onClick={() => deleteSale(s.id)}>🗑️</button>
+              <td style={{ color: s.customer === 'Walk-in' ? 'var(--text3)' : 'var(--text)' }}>{s.customer}</td>
+              <td style={{ display: 'flex', gap: '4px' }}>
+                <button className="btn-sm bg-blue-500 text-white" onClick={() => openEdit(s)}>✏️</button>
+                <button className="btn-sm bg-red-500 text-white" onClick={() => setConfirmId(s.id)}>🗑️</button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+
+      {/* Edit Modal */}
+      {editSale && editForm && (
+        <div className="modal-overlay" onClick={() => { setEditSale(null); setEditForm(null); }}>
+          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+            <h3>✏️ Sale Edit Karo — #{editSale.id}</h3>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Part Name</label>
+                <input className="gb-input w-full mt-1" value={editForm.item_name} onChange={ef('item_name')} />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '100px' }}>
+                  <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Qty</label>
+                  <input className="gb-input w-full mt-1" type="number" min="1" value={editForm.qty} onChange={ef('qty')} />
+                </div>
+                <div style={{ flex: 1, minWidth: '120px' }}>
+                  <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Amount ₹</label>
+                  <input className="gb-input w-full mt-1" type="number" min="0" value={editForm.amount} onChange={ef('amount')} />
+                </div>
+                <div style={{ flex: 1, minWidth: '130px' }}>
+                  <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Payment</label>
+                  <select className="gb-input w-full mt-1" value={editForm.payment} onChange={ef('payment')}>
+                    <option value="cash">💵 Cash</option>
+                    <option value="online">📱 Online</option>
+                    <option value="udhaar">📋 Credit</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ flex: 1, minWidth: '150px' }}>
+                  <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Customer</label>
+                  <input className="gb-input w-full mt-1"
+                    placeholder={editForm.payment === 'udhaar' ? 'Zaroori *' : 'Optional'}
+                    value={editForm.customer} onChange={ef('customer')} />
+                </div>
+                <div style={{ flex: 1, minWidth: '130px' }}>
+                  <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Phone</label>
+                  <input className="gb-input w-full mt-1" value={editForm.phone} onChange={ef('phone')} />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--text2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.06em' }}>Date & Time</label>
+                <input className="gb-input w-full mt-1" type="datetime-local" value={editForm.date} onChange={ef('date')} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button className="btn-gray" onClick={() => { setEditSale(null); setEditForm(null); }}>Cancel</button>
+              <button className="btn" onClick={saveEdit} disabled={saving}>{saving ? '⏳...' : '💾 Save'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {confirmId !== null && (
         <ConfirmModal

@@ -55,6 +55,21 @@ export default function CreditPage() {
     await load();
   }
 
+  async function markAllPaid(customer: string, phone: string) {
+    const toMark = sales.filter(s => s.payment === 'udhaar' && !s.udhaar_paid && s.customer === customer && s.phone === phone);
+    await Promise.all(toMark.map(s =>
+      fetch(`/api/sales/${s.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'paid' }),
+      })
+    ));
+    toast(`✅ ${toMark.length} items paid mark ho gaye!`);
+    broadcast('sales');
+    setModal(null);
+    await load();
+  }
+
   const modalSales = modal
     ? sales.filter(s => s.payment === 'udhaar' && s.customer === modal.customer && s.phone === modal.phone)
     : [];
@@ -99,7 +114,17 @@ export default function CreditPage() {
               <h3 className="font-bold text-lg">
                 {modal.customer}{modal.phone ? ` — ${modal.phone}` : ''}
               </h3>
-              <button className="text-gray-400 hover:text-gray-700 text-xl" onClick={() => setModal(null)}>✕</button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                {modalSales.some(s => !s.udhaar_paid) && (
+                  <button
+                    className="btn-green"
+                    style={{ fontSize: '12px', padding: '5px 12px' }}
+                    onClick={() => markAllPaid(modal.customer, modal.phone)}>
+                    ✅ Mark All Paid
+                  </button>
+                )}
+                <button className="text-gray-400 hover:text-gray-700 text-xl" onClick={() => setModal(null)}>✕</button>
+              </div>
             </div>
             <table className="gb-table">
               <thead><tr><th>Date</th><th>Part</th><th>Amount</th><th>Status</th><th>Action</th></tr></thead>

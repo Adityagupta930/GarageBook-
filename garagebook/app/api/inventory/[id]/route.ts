@@ -19,12 +19,17 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
     const { stock, price, buy_price, company, sku, category } = body;
     if (stock == null || isNaN(+stock)) return apiError('Valid stock daalo');
-    if (price == null || isNaN(+price)) return apiError('Valid price daalo');
 
-    const info = await db.execute({
-      sql: 'UPDATE inventory SET stock = ?, price = ?, buy_price = ?, company = ?, sku = ?, category = ? WHERE id = ?',
-      args: [+stock, +price, buy_price != null ? +buy_price : 0, company?.trim() ?? '', sku?.trim() ?? '', category?.trim() ?? '', id],
-    });
+    const fields: string[] = ['stock = ?'];
+    const args: (string | number)[] = [+stock];
+    if (price     != null && !isNaN(+price))     { fields.push('price = ?');     args.push(+price); }
+    if (buy_price != null && !isNaN(+buy_price)) { fields.push('buy_price = ?'); args.push(+buy_price); }
+    if (company   != null) { fields.push('company = ?');  args.push(company.trim()); }
+    if (sku       != null) { fields.push('sku = ?');      args.push(sku.trim()); }
+    if (category  != null) { fields.push('category = ?'); args.push(category.trim()); }
+    args.push(id);
+
+    const info = await db.execute({ sql: `UPDATE inventory SET ${fields.join(', ')} WHERE id = ?`, args });
     if (info.rowsAffected === 0) return apiError('Part nahi mila', 404);
     return apiOk({ success: true });
   } catch (e) {

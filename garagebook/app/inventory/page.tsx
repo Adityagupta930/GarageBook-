@@ -8,6 +8,7 @@ import { listenSync, broadcast } from '@/lib/sync';
 import type { InventoryItem } from '@/types';
 
 type EditState = { stock: string; price: string; buy_price: string; company: string; sku: string; category: string };
+type StockAdd  = { id: number; name: string; current: number; val: string; buyPrice: string; sellPrice: string };
 
 export default function InventoryPage() {
   const [items, setItems]       = useState<InventoryItem[]>([]);
@@ -19,6 +20,7 @@ export default function InventoryPage() {
   const [catFilter, setCatFilter] = useState('');
   const [saving, setSaving]     = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<{ id: number; name: string } | null>(null);
+  const [stockAdd, setStockAdd] = useState<StockAdd | null>(null);
   const { isOwner } = useRole();
 
   const load = useCallback(async () => {
@@ -96,11 +98,45 @@ export default function InventoryPage() {
     await load();
   }
 
+  async function doAddStock() {
+    if (!stockAdd) return;
+    const add = +stockAdd.val;
+    if (!add || add <= 0) return toast('Valid quantity daalo!', 'error');
+    const newStock = stockAdd.current + add;
+    // First add stock
+    const r1 = await fetch(`/api/inventory/${stockAdd.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'addstock', qty: add }),
+    });
+    if (!r1.ok) return toast('Stock update nahi hua', 'error');
+    // If prices changed, update them too
+    const buyChanged  = stockAdd.buyPrice  && +stockAdd.buyPrice  > 0;
+    const sellChanged = stockAdd.sellPrice && +stockAdd.sellPrice > 0;
+    if (buyChanged || sellChanged) {
+      await fetch(`/api/inventory/${stockAdd.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stock: newStock,
+          price: sellChanged ? +stockAdd.sellPrice : undefined,
+          buy_price: buyChanged ? +stockAdd.buyPrice : undefined,
+        }),
+      });
+    }
+    toast(`✅ ${stockAdd.name} — ${add} units add! (Total: ${newStock})`);
+    broadcast('inventory');
+    setStockAdd(null);
+    await load();
+  }
+
   const f = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm(p => ({ ...p, [field]: e.target.value }));
 
-  const outCount = items.filter(i => Number(i.stock) === 0).length;
-  const lowCount = items.filter(i => Number(i.stock) > 0 && Number(i.stock) <= 3).length;
+  const outCount   = items.filter(i => Number(i.stock) === 0).length;
+  const lowCount   = items.filter(i => Number(i.stock) > 0 && Number(i.stock) <= 3).length;
+  const totalCostVal = items.reduce((a, i) => a + Number(i.stock) * Number(i.buy_price), 0);
+  const totalSellVal = items.reduce((a, i) => a + Number(i.stock) * Number(i.price), 0);
 
   return (
     <div>
@@ -161,7 +197,9 @@ export default function InventoryPage() {
               const low = qty > 0 && qty <= 3;
               const margin = item.price > 0 ? (((item.price - item.buy_price) / item.price) * 100).toFixed(0) : '0';
               return (
-                <tr key={item.id} className={out ? 'bg-red-50' : low ? 'bg-orange-50' : ''}>
+                <tr key={item.id} style={{
+                background: out ? 'rgba(239,68,68,.07)' : low ? 'rgba(249,115,22,.07)' : 'transparent'
+              }}>
                   <td className={`font-medium ${out ? 'text-red-600' : low ? 'text-orange-600' : ''}`}>{item.name}</td>
                   <td className="text-xs text-gray-500 font-mono">{e ? <input className="gb-input w-24" value={e.sku} onChange={ev => setEditing(p => ({ ...p, [item.id]: { ...p[item.id], sku: ev.target.value } }))} /> : (item.sku || '—')}</td>
                   <td>{e ? <input className="gb-input w-28" value={e.category} onChange={ev => setEditing(p => ({ ...p, [item.id]: { ...p[item.id], category: ev.target.value } }))} /> : (item.category ? <span className="badge bg-gray-100 text-gray-700">{item.category}</span> : '—')}</td>
@@ -181,6 +219,10 @@ export default function InventoryPage() {
                       </>
                     ) : (
                       <>
+                        <button className="btn-sm bg-green-500 text-white"
+                          onClick={() => setStockAdd({ id: item.id, name: item.name, current: Number(item.stock), val: '', buyPrice: String(item.buy_price), sellPrice: String(item.price) })}>
+                          ➕
+                        </button>
                         <button className="btn-sm bg-blue-500 text-white"
                           onClick={() => setEditing(p => ({ ...p, [item.id]: { stock: String(item.stock), price: String(item.price), buy_price: String(item.buy_price), company: item.company || '', sku: item.sku || '', category: item.category || '' } }))}>
                           ✏️
@@ -197,12 +239,82 @@ export default function InventoryPage() {
         </table>
       </div>
 
+      {/* Inventory Value Summary */}
+      {!loading && items.length > 0 && isOwner && (
+        <div style={{
+          marginTop: '12px', background: 'var(--surface)', border: '1px solid var(--border)',
+          borderRadius: '10px', padding: '12px 16px',
+          display: 'flex', flexWrap: 'wrap', gap: '20px', fontSize: '13px',
+        }}>
+          <span style={{ color: 'var(--text2)' }}>📊 <b style={{ color: 'var(--text)' }}>{items.length}</b> parts</span>
+          <span style={{ color: 'var(--text2)' }}>💰 Cost Value: <b style={{ color: '#2563eb' }}>₹{totalCostVal.toFixed(0)}</b></span>
+          <span style={{ color: 'var(--text2)' }}>💵 Sell Value: <b style={{ color: '#16a34a' }}>₹{totalSellVal.toFixed(0)}</b></span>
+          <span style={{ color: 'var(--text2)' }}>📈 Potential Profit: <b style={{ color: '#7c3aed' }}>₹{(totalSellVal - totalCostVal).toFixed(0)}</b></span>
+        </div>
+      )}
+
       {confirmDelete && (
         <ConfirmModal
           message={`"${confirmDelete.name}" permanently delete karo?`}
           onConfirm={() => doDelete(confirmDelete.id, confirmDelete.name)}
           onCancel={() => setConfirmDelete(null)}
         />
+      )}
+
+      {stockAdd && (
+        <div className="modal-overlay" onClick={() => setStockAdd(null)}>
+          <div className="modal-box" onClick={e => e.stopPropagation()} style={{ maxWidth: 360 }}>
+            <h3 style={{ marginBottom: '4px' }}>➕ Stock Add Karo</h3>
+            <p style={{ fontSize: '13px', color: 'var(--text2)', marginBottom: '16px' }}>
+              <b>{stockAdd.name}</b> — Current stock: <b>{stockAdd.current}</b>
+            </p>
+
+            <label style={{ fontSize: '12px', color: 'var(--text2)' }}>Kitna add karna hai? *</label>
+            <input
+              className="gb-input w-full"
+              type="number" min="1"
+              placeholder="Quantity (e.g. 10)"
+              value={stockAdd.val}
+              autoFocus
+              onChange={e => setStockAdd(p => p ? { ...p, val: e.target.value } : p)}
+              onKeyDown={e => { if (e.key === 'Enter') doAddStock(); if (e.key === 'Escape') setStockAdd(null); }}
+              style={{ marginBottom: '10px' }}
+            />
+
+            {stockAdd.val && +stockAdd.val > 0 && (
+              <p style={{ fontSize: '12px', color: '#16a34a', marginBottom: '12px' }}>
+                New stock: {stockAdd.current} + {stockAdd.val} = <b>{stockAdd.current + +stockAdd.val}</b>
+              </p>
+            )}
+
+            <div style={{ borderTop: '1px dashed var(--border)', paddingTop: '12px', marginBottom: '4px' }}>
+              <p style={{ fontSize: '11px', color: 'var(--text3)', marginBottom: '8px' }}>Price badli hai? (optional)</p>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '11px', color: 'var(--text2)' }}>Buy Price ₹</label>
+                  <input className="gb-input w-full" type="number" min="0"
+                    placeholder="Buy ₹"
+                    value={stockAdd.buyPrice}
+                    onChange={e => setStockAdd(p => p ? { ...p, buyPrice: e.target.value } : p)}
+                  />
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={{ fontSize: '11px', color: 'var(--text2)' }}>Sell Price ₹</label>
+                  <input className="gb-input w-full" type="number" min="0"
+                    placeholder="Sell ₹"
+                    value={stockAdd.sellPrice}
+                    onChange={e => setStockAdd(p => p ? { ...p, sellPrice: e.target.value } : p)}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button className="btn" onClick={doAddStock}>✅ Add Stock</button>
+              <button className="btn-gray" onClick={() => setStockAdd(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

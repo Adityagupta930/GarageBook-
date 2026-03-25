@@ -4,6 +4,7 @@ import './globals.css';
 import ShellClient from '@/components/ShellClient';
 import ToastContainer from '@/components/Toast';
 import SwRegister from '@/components/SwRegister';
+import { LangProvider } from '@/hooks/useLang';
 import { initDb } from '@/lib/db';
 
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
@@ -24,9 +25,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
       </head>
       <body>
-        <ShellClient>{children}</ShellClient>
-        <ToastContainer />
-        <SwRegister />
+        <LangProvider>
+          <ShellClient>{children}</ShellClient>
+          <ToastContainer />
+          <SwRegister />
+        </LangProvider>
       </body>
     </html>
   );
