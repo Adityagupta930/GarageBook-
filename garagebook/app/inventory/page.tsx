@@ -144,15 +144,15 @@ export default function InventoryPage() {
       {isOwner && (
       <div className="form-box">
         <h3>Naya Part Add Karo</h3>
-        <div className="flex flex-wrap gap-2">
-          <input className="gb-input" placeholder="Part naam *" value={form.name} onChange={f('name')} onKeyDown={e => e.key === 'Enter' && addItem()} />
-          <input className="gb-input" placeholder="SKU / Code" value={form.sku} onChange={f('sku')} />
-          <input className="gb-input" placeholder="Category (e.g. Engine, Brake)" value={form.category} onChange={f('category')} />
-          <input className="gb-input" placeholder="Company" value={form.company} onChange={f('company')} />
-          <input className="gb-input w-24" type="number" placeholder="Stock *" min="0" value={form.stock} onChange={f('stock')} />
-          <input className="gb-input w-28" type="number" placeholder="Sell ₹ *" min="0" value={form.price} onChange={f('price')} />
-          <input className="gb-input w-28" type="number" placeholder="Buy ₹ *" min="0" value={form.buy_price} onChange={f('buy_price')} />
-          <button className="btn" onClick={addItem} disabled={saving}>{saving ? '⏳...' : '➕ Add'}</button>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '8px' }}>
+          <input className="gb-input" style={{ minWidth: 0 }} placeholder="Part naam *" value={form.name} onChange={f('name')} onKeyDown={e => e.key === 'Enter' && addItem()} />
+          <input className="gb-input" style={{ minWidth: 0 }} placeholder="Company" value={form.company} onChange={f('company')} />
+          <input className="gb-input" style={{ minWidth: 0 }} placeholder="Category" value={form.category} onChange={f('category')} />
+          <input className="gb-input" style={{ minWidth: 0 }} placeholder="SKU / Code" value={form.sku} onChange={f('sku')} />
+          <input className="gb-input" style={{ minWidth: 0 }} type="number" placeholder="Stock *" min="0" value={form.stock} onChange={f('stock')} />
+          <input className="gb-input" style={{ minWidth: 0 }} type="number" placeholder="Sell ₹ *" min="0" value={form.price} onChange={f('price')} />
+          <input className="gb-input" style={{ minWidth: 0 }} type="number" placeholder="Buy ₹ *" min="0" value={form.buy_price} onChange={f('buy_price')} />
+          <button className="btn" style={{ minWidth: 0 }} onClick={addItem} disabled={saving}>{saving ? '⏳...' : '➕ Add Part'}</button>
         </div>
       </div>
       )}

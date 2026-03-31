@@ -17,7 +17,8 @@ export default function CreditPage() {
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try {
-      setSales(await fetch('/api/sales').then(r => r.json()));
+      const data = await fetch('/api/sales').then(r => r.json());
+      setSales(Array.isArray(data) ? data : []);
     } catch {
       setError('Credit data load nahi hua.');
     } finally {

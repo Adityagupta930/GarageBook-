@@ -27,7 +27,7 @@ export default function HistoryPage() {
       const params = new URLSearchParams();
       if (date)    { params.set('from', date); params.set('to', date); }
       if (payment) params.set('payment', payment);
-      setSales(await fetch(`/api/sales?${params}`).then(r => r.json()));
+      setSales(await fetch(`/api/sales?${params}`).then(async r => { const d = await r.json(); return Array.isArray(d) ? d : []; }));
     } catch {
       setError('History load nahi hui.');
     } finally {

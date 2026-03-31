@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import type { Role } from '@/hooks/useRole';
 import { useLang } from '@/hooks/useLang';
 import type { InventoryItem } from '@/types';
+import InstallButton from '@/components/InstallButton';
 
 const titles: Record<string, { label: string; icon: string }> = {
   '/':          { label: 'Dashboard',     icon: '▦'  },
@@ -138,6 +139,9 @@ export default function Topbar({ onMenuClick, role, setRole, isOwner }: Props) {
             </div>
           )}
         </div>
+
+        {/* Install App Button */}
+        <InstallButton />
 
         {/* Lang toggle */}
         <button

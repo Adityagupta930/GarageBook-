@@ -51,7 +51,6 @@ export default function SalePage() {
     return unsync;
   }, [loadInv]);
 
-  // Keyboard shortcut: Ctrl+Enter to submit
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Enter' && e.ctrlKey) {
@@ -64,15 +63,15 @@ export default function SalePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [itemId, qty, price, discount, payment, customer, phone, inv]);
 
-  const freq = getFreq();
+  const freq        = getFreq();
+  const selectedItem = inv.find(i => i.id === +itemId);
+  const baseAmount  = price ? (+qty * +price) : 0;
+  const finalAmount = Math.max(0, baseAmount - +discount).toFixed(2);
+
   const filtered = inv
     .filter(i => i.stock > 0)
     .filter(i => !search || fuzzyMatch(i.name + ' ' + (i.company || '') + ' ' + (i.sku || ''), search))
     .sort((a, b) => (freq[b.id] || 0) - (freq[a.id] || 0));
-
-  const selectedItem = inv.find(i => i.id === +itemId);
-  const baseAmount   = price ? (+qty * +price) : 0;
-  const finalAmount  = Math.max(0, baseAmount - +discount).toFixed(2);
 
   function selectItem(item: InventoryItem) {
     setItemId(String(item.id));
@@ -96,47 +95,84 @@ export default function SalePage() {
     if (!item) return toast('Part nahi mila!', 'error');
     if (+qty > item.stock) return toast(`Sirf ${item.stock} stock bacha hai!`, 'error');
 
-    const payload = {
-      item_id: +itemId, item_name: item.name + (item.company ? ` (${item.company})` : ''),
-      qty: +qty, amount: +finalAmount,
-      payment, customer: customer.trim() || 'Walk-in', phone: phone.trim(),
-      notes: notes.trim(),
+    // Capture ALL values BEFORE reset() clears state
+    const sv = {
+      itemId:   +itemId,
+      itemName: item.name + (item.company ? ` (${item.company})` : ''),
+      qty:      +qty,
+      price:    +price,
+      base:     baseAmount,
+      discount: +discount,
+      final:    +finalAmount,
+      payment,
+      customer: customer.trim() || 'Walk-in',
+      phone:    phone.trim(),
+      notes:    notes.trim(),
+      operator,
+      buyPrice: item.buy_price,
     };
 
-    // ── Optimistic UI ──────────────────────────────────────────
-    setInv(prev => prev.map(i => i.id === +itemId ? { ...i, stock: i.stock - +qty } : i));
+    // Optimistic UI — update stock instantly
+    setInv(prev => prev.map(i => i.id === sv.itemId ? { ...i, stock: i.stock - sv.qty } : i));
     setSuccess(true);
     setTimeout(() => setSuccess(false), 800);
-    bumpFreq(+itemId);
+    bumpFreq(sv.itemId);
     reset();
     setSaving(true);
 
+    const offlinePayload = {
+      item_id: sv.itemId, item_name: sv.itemName,
+      qty: sv.qty, amount: sv.final,
+      payment: sv.payment, customer: sv.customer,
+      phone: sv.phone, notes: sv.notes,
+    };
+
     try {
-      if (!navigator.onLine) { enqueueOfflineSale(payload); return; }
-      const res  = await fetch('/api/sales', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+      if (!navigator.onLine) { enqueueOfflineSale(offlinePayload); return; }
+
+      // Save to /api/bills — internally also saves to sales table
+      const res = await fetch('/api/bills', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customer: sv.customer,
+          phone:    sv.phone,
+          payment:  sv.payment,
+          subtotal: sv.base,
+          discount: sv.discount,
+          total:    sv.final,
+          operator: sv.operator,
+          notes:    sv.notes,
+          items: [{
+            item_id:   sv.itemId,
+            item_name: sv.itemName,
+            qty:       sv.qty,
+            price:     sv.price,
+            amount:    sv.final,
+          }],
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
-        await loadInv();
+        await loadInv(); // rollback optimistic
         return toast(data.error || 'Sale save nahi hua', 'error');
       }
-      if (data.belowCost) toast(`⚠️ ${item.name} — cost price se kam mein becha!`, 'info');
-      else toast(`✅ ${item.name} ×${qty} = ₹${finalAmount} (${payment.toUpperCase()})`);
-      setRecentSales(p => [{ item_name: item.name, qty: +qty, amount: +finalAmount, payment }, ...p].slice(0, 5));
+
+      const belowCost = sv.price > 0 && (sv.final / sv.qty) < sv.buyPrice;
+      if (belowCost) toast(`⚠️ ${item.name} — cost price se kam mein becha!`, 'info');
+      else toast(`✅ ${item.name} ×${sv.qty} = ₹${sv.final.toFixed(2)} (${sv.payment.toUpperCase()}) — #${data.bill_no}`);
+
+      setRecentSales(p => [{ item_name: item.name, qty: sv.qty, amount: sv.final, payment: sv.payment }, ...p].slice(0, 5));
       broadcast('sales');
       broadcast('inventory');
       sessionStorage.setItem('gb_pending_bill', JSON.stringify({
-        items: [{ item_id: item.id, item_name: item.name, qty: +qty, price: +price }],
-        customer: payload.customer,
-        phone: payload.phone,
-        payment,
-        discount: +discount,
+        items: [{ item_id: item.id, item_name: item.name, qty: sv.qty, price: sv.price }],
+        customer: sv.customer, phone: sv.phone,
+        payment: sv.payment, discount: sv.discount,
       }));
       setLastBill(true);
     } catch {
-      enqueueOfflineSale(payload);
+      enqueueOfflineSale(offlinePayload);
     } finally {
       setSaving(false);
     }
@@ -192,7 +228,6 @@ export default function SalePage() {
                   padding: '9px 14px', cursor: 'pointer', fontSize: '13px',
                   borderBottom: '1px solid var(--border)',
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  transition: 'background .1s',
                 }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'var(--surface2)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -209,7 +244,6 @@ export default function SalePage() {
             ))}
           </div>
         )}
-        {/* Click outside to close */}
         {showDrop && <div style={{ position: 'fixed', inset: 0, zIndex: 49 }} onClick={() => setShowDrop(false)} />}
       </div>
 
@@ -242,11 +276,7 @@ export default function SalePage() {
               <span style={{ color: '#f97316', marginLeft: '6px' }}>MRP: ₹{selectedItem.price}</span>
             )}
           </label>
-          <input
-            className="gb-input"
-            type="number"
-            min="0"
-            value={price}
+          <input className="gb-input" type="number" min="0" value={price}
             onChange={e => setPrice(e.target.value)}
             style={{ borderColor: selectedItem && +price !== selectedItem.price ? '#f97316' : undefined }}
           />
@@ -261,7 +291,7 @@ export default function SalePage() {
         </div>
         <div className="flex flex-col gap-1 w-32">
           <label className="text-xs text-gray-500">Final ₹</label>
-          <input className="gb-input font-semibold" type="number" value={finalAmount} readOnly
+          <input className="gb-input" type="number" value={finalAmount} readOnly
             style={{ background: '#f0fdf4', color: '#16a34a', fontWeight: 700 }} />
         </div>
       </div>
@@ -275,7 +305,7 @@ export default function SalePage() {
         </select>
         <CustomerAutocomplete
           value={customer}
-          onChange={(name, phone) => { setCustomer(name); if (phone !== undefined) setPhone(phone); }}
+          onChange={(name, ph) => { setCustomer(name); if (ph !== undefined) setPhone(ph); }}
           placeholder={payment === 'udhaar' ? 'Customer naam (zaroori!) *' : 'Customer naam (optional)'}
           required={payment === 'udhaar'}
         />
