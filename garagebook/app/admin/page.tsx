@@ -12,6 +12,8 @@ import { getErrorLog, clearErrorLog } from '@/hooks/useErrorLogger';
 
 type Tab = 'reports' | 'customers' | 'returns' | 'sales' | 'bills' | 'errorlog';
 
+
+
 export default function AdminPage() {
   const [tab, setTab]             = useState<Tab>('reports');
   const [customers, setCustomers] = useState<Customer[]>([]);
