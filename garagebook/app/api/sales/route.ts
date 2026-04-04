@@ -16,7 +16,10 @@ export async function GET(req: NextRequest) {
     if (to)      { sql += ' AND date <= ?'; args.push(to + ' 23:59:59'); }
     if (payment) { sql += ' AND payment = ?'; args.push(payment); }
     sql += ' ORDER BY date DESC';
-    if (limit && !isNaN(+limit)) { sql += ' LIMIT ?'; args.push(+limit); }
+    const defaultLimit = (!from && !to && !payment) ? 200 : 1000;
+    const finalLimit = (limit && !isNaN(+limit)) ? +limit : defaultLimit;
+    sql += ' LIMIT ?';
+    args.push(finalLimit);
 
     const result = await db.execute({ sql, args });
     return apiOk(result.rows);

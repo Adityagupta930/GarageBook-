@@ -6,10 +6,12 @@ export async function GET(req: NextRequest) {
   try {
     const search   = req.nextUrl.searchParams.get('search');
     const category = req.nextUrl.searchParams.get('category');
+    const instock  = req.nextUrl.searchParams.get('instock');
     let sql  = 'SELECT * FROM inventory WHERE 1=1';
     const args: string[] = [];
     if (search)   { sql += ' AND LOWER(name) LIKE ?'; args.push(`%${search.toLowerCase()}%`); }
     if (category) { sql += ' AND category = ?'; args.push(category); }
+    if (instock)  { sql += ' AND stock > 0'; }
     sql += ' ORDER BY name';
     const result = await db.execute({ sql, args });
     return apiOk(result.rows);

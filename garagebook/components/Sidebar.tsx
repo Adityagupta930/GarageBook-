@@ -40,7 +40,7 @@ export default function Sidebar({ onClose, isOwner }: Props) {
       </div>
 
       <nav className="sidebar-nav">
-        <div className="sidebar-section-label">Navigation</div>
+        <div className="sidebar-section-label" suppressHydrationWarning>Navigation</div>
         {visible.map(l => (
           <Link key={l.href} href={l.href}
             onClick={onClose}

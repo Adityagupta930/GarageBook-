@@ -27,8 +27,8 @@ export default function Dashboard() {
     setLoading(true); setError('');
     try {
       const [s, i] = await Promise.all([
-        fetch('/api/sales').then(r => r.json()),
-        fetch('/api/inventory').then(r => r.json()),
+        fetch('/api/sales?limit=200', { next: { revalidate: 0 } } as RequestInit).then(r => r.json()),
+        fetch('/api/inventory', { next: { revalidate: 0 } } as RequestInit).then(r => r.json()),
       ]);
       setSales(Array.isArray(s) ? s : []);
       setInv(Array.isArray(i) ? i : []);
@@ -44,12 +44,9 @@ export default function Dashboard() {
     const onVisible = () => { if (document.visibilityState === 'visible') load(); };
     document.addEventListener('visibilitychange', onVisible);
     const unsync = listenSync(['sales', 'inventory'], load);
-    // Auto-refresh every 5 minutes
-    const timer = setInterval(load, 5 * 60 * 1000);
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
       unsync();
-      clearInterval(timer);
     };
   }, [load]);
 

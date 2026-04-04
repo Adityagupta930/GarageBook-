@@ -41,7 +41,7 @@ export default function SalePage() {
   const { operator, asking, input, setInput, confirm, change } = useOperator();
 
   const loadInv = useCallback(async () => {
-    const data: InventoryItem[] = await fetch('/api/inventory').then(r => r.json());
+    const data: InventoryItem[] = await fetch('/api/inventory?instock=1').then(r => r.json());
     setInv(Array.isArray(data) ? data : []);
   }, []);
 
