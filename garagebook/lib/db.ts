@@ -16,8 +16,8 @@ const db: Client = global._db ?? makeClient();
 if (process.env.NODE_ENV !== 'production') global._db = db;
 
 export async function initDb() {
-  await db.executeMultiple(`
-    CREATE TABLE IF NOT EXISTS inventory (
+  const tables = [
+    `CREATE TABLE IF NOT EXISTS inventory (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       name       TEXT    NOT NULL,
       sku        TEXT    DEFAULT '',
@@ -27,15 +27,15 @@ export async function initDb() {
       buy_price  REAL    NOT NULL DEFAULT 0,
       company    TEXT    NOT NULL DEFAULT '',
       created_at TEXT    DEFAULT (datetime('now','localtime'))
-    );
-    CREATE TABLE IF NOT EXISTS customers (
+    )`,
+    `CREATE TABLE IF NOT EXISTS customers (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       name       TEXT NOT NULL,
       phone      TEXT DEFAULT '',
       address    TEXT DEFAULT '',
       created_at TEXT DEFAULT (datetime('now','localtime'))
-    );
-    CREATE TABLE IF NOT EXISTS sales (
+    )`,
+    `CREATE TABLE IF NOT EXISTS sales (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       item_id     INTEGER REFERENCES inventory(id) ON DELETE SET NULL,
       item_name   TEXT    NOT NULL,
@@ -47,8 +47,8 @@ export async function initDb() {
       phone       TEXT    DEFAULT '',
       date        TEXT    DEFAULT (datetime('now','localtime')),
       udhaar_paid INTEGER DEFAULT 0
-    );
-    CREATE TABLE IF NOT EXISTS returns (
+    )`,
+    `CREATE TABLE IF NOT EXISTS returns (
       id        INTEGER PRIMARY KEY AUTOINCREMENT,
       sale_id   INTEGER REFERENCES sales(id) ON DELETE SET NULL,
       item_id   INTEGER REFERENCES inventory(id) ON DELETE SET NULL,
@@ -57,8 +57,8 @@ export async function initDb() {
       amount    REAL    NOT NULL,
       reason    TEXT    DEFAULT '',
       date      TEXT    DEFAULT (datetime('now','localtime'))
-    );
-    CREATE TABLE IF NOT EXISTS bills (
+    )`,
+    `CREATE TABLE IF NOT EXISTS bills (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       bill_no    TEXT    NOT NULL UNIQUE,
       customer   TEXT    DEFAULT 'Walk-in',
@@ -70,8 +70,8 @@ export async function initDb() {
       operator   TEXT    DEFAULT '',
       notes      TEXT    DEFAULT '',
       date       TEXT    DEFAULT (datetime('now','localtime'))
-    );
-    CREATE TABLE IF NOT EXISTS bill_items (
+    )`,
+    `CREATE TABLE IF NOT EXISTS bill_items (
       id        INTEGER PRIMARY KEY AUTOINCREMENT,
       bill_id   INTEGER NOT NULL REFERENCES bills(id) ON DELETE CASCADE,
       item_id   INTEGER REFERENCES inventory(id) ON DELETE SET NULL,
@@ -80,16 +80,16 @@ export async function initDb() {
       price     REAL    NOT NULL,
       buy_price REAL    NOT NULL DEFAULT 0,
       amount    REAL    NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS expenses (
+    )`,
+    `CREATE TABLE IF NOT EXISTS expenses (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       title      TEXT NOT NULL,
       amount     REAL NOT NULL,
       category   TEXT DEFAULT 'Other',
       note       TEXT DEFAULT '',
       date       TEXT DEFAULT (datetime('now','localtime'))
-    );
-    CREATE TABLE IF NOT EXISTS suppliers (
+    )`,
+    `CREATE TABLE IF NOT EXISTS suppliers (
       id         INTEGER PRIMARY KEY AUTOINCREMENT,
       name       TEXT NOT NULL,
       phone      TEXT DEFAULT '',
@@ -97,56 +97,31 @@ export async function initDb() {
       company    TEXT DEFAULT '',
       note       TEXT DEFAULT '',
       created_at TEXT DEFAULT (datetime('now','localtime'))
-    );
-  `);
+    )`,
+  ];
+
+  for (const sql of tables) {
+    try { await db.execute(sql); } catch { /* already exists */ }
+  }
+
   // Safe migrations
   const migrations = [
     "ALTER TABLE inventory ADD COLUMN company  TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE inventory ADD COLUMN sku      TEXT DEFAULT ''",
     "ALTER TABLE inventory ADD COLUMN category TEXT DEFAULT ''",
     "ALTER TABLE sales     ADD COLUMN notes    TEXT DEFAULT ''",
-    // Indexes for performance
     "CREATE INDEX IF NOT EXISTS idx_sales_date    ON sales(date DESC)",
     "CREATE INDEX IF NOT EXISTS idx_sales_payment ON sales(payment)",
-    "CREATE INDEX IF NOT EXISTS idx_sales_udhaar  ON sales(udhaar_paid) WHERE payment='udhaar'",
     "CREATE INDEX IF NOT EXISTS idx_inv_name      ON inventory(name)",
     "CREATE INDEX IF NOT EXISTS idx_inv_stock     ON inventory(stock)",
     "CREATE INDEX IF NOT EXISTS idx_bills_date     ON bills(date DESC)",
     "CREATE INDEX IF NOT EXISTS idx_bill_items_bid ON bill_items(bill_id)",
-    "CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(date DESC)",
     "ALTER TABLE customers ADD COLUMN notes TEXT DEFAULT ''",
     "ALTER TABLE customers ADD COLUMN total_purchases REAL DEFAULT 0",
   ];
   for (const sql of migrations) {
-    try { await db.execute(sql); } catch { /* column already exists */ }
+    try { await db.execute(sql); } catch { /* already exists */ }
   }
-
-  // Remove UNIQUE constraint on name — allow same part from different companies
-  // SQLite doesn't support DROP CONSTRAINT, so we recreate the table
-  try {
-    const info = await db.execute("SELECT sql FROM sqlite_master WHERE type='table' AND name='inventory'");
-    const ddl  = String((info.rows[0] as Record<string, unknown>)?.sql || '');
-    if (ddl.includes('UNIQUE') && ddl.toUpperCase().includes('NAME')) {
-      await db.executeMultiple(`
-        PRAGMA foreign_keys=OFF;
-        CREATE TABLE IF NOT EXISTS inventory_new (
-          id         INTEGER PRIMARY KEY AUTOINCREMENT,
-          name       TEXT    NOT NULL,
-          sku        TEXT    DEFAULT '',
-          category   TEXT    DEFAULT '',
-          stock      INTEGER NOT NULL DEFAULT 0,
-          price      REAL    NOT NULL DEFAULT 0,
-          buy_price  REAL    NOT NULL DEFAULT 0,
-          company    TEXT    NOT NULL DEFAULT '',
-          created_at TEXT    DEFAULT (datetime('now','localtime'))
-        );
-        INSERT OR IGNORE INTO inventory_new SELECT * FROM inventory;
-        DROP TABLE inventory;
-        ALTER TABLE inventory_new RENAME TO inventory;
-        PRAGMA foreign_keys=ON;
-      `);
-    }
-  } catch { /* already migrated */ }
 }
 
 export default db;

@@ -48,3 +48,6 @@ garagebook.db-wal
 # Agents
 AGENTS.md
 CLAUDE.md
+
+.vercel
+.env*.local
