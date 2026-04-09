@@ -38,7 +38,7 @@ export default function AdminPage() {
   const [billDetail, setBillDetail]   = useState<BillWithItems | null>(null);
   const [billLoading, setBillLoading] = useState(false);
   const [confirmBillId, setConfirmBillId] = useState<number | null>(null);
-  const { isOwner } = useRole();
+  const { isOwner } = useAuth();
   const [errorLog, setErrorLog] = useState(() => getErrorLog());
 
   const loadCustomers = useCallback(async () => {
