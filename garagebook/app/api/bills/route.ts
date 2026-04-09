@@ -5,26 +5,26 @@ import { apiError, apiOk } from '@/lib/utils';
 function genBillNo(): string {
   const now = new Date();
   const d = now.toLocaleDateString('en-CA').replace(/-/g, '');
-  const t = String(now.getHours()).padStart(2,'0') + String(now.getMinutes()).padStart(2,'0');
-  const r = String(Math.floor(Math.random() * 100)).padStart(2,'0');
+  const t = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
+  const r = String(Math.floor(Math.random() * 100)).padStart(2, '0');
   return `PA-${d}-${t}${r}`;
 }
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
-    const from    = searchParams.get('from');
-    const to      = searchParams.get('to');
-    const limit   = searchParams.get('limit') || '200';
+    const from  = searchParams.get('from');
+    const to    = searchParams.get('to');
+    const limit = +(searchParams.get('limit') || 200);
 
-    let sql = 'SELECT * FROM bills WHERE 1=1';
-    const args: (string | number)[] = [];
-    if (from) { sql += ' AND date >= ?'; args.push(from); }
-    if (to)   { sql += ' AND date <= ?'; args.push(to + ' 23:59:59'); }
-    sql += ` ORDER BY date DESC LIMIT ${+limit}`;
+    let query = db.from('bills').select('*');
+    if (from) query = query.gte('date', from);
+    if (to)   query = query.lte('date', to + 'T23:59:59');
+    query = query.order('date', { ascending: false }).limit(limit);
 
-    const result = await db.execute({ sql, args });
-    return apiOk(result.rows);
+    const { data, error } = await query;
+    if (error) throw error;
+    return apiOk(data);
   } catch (e) {
     console.error('[GET /api/bills]', e);
     return apiError('Bills fetch nahi hue', 500);
@@ -35,56 +35,48 @@ export async function POST(req: NextRequest) {
   try {
     const { customer, phone, payment, subtotal, discount, total, operator, notes, items } = await req.json();
 
-    if (!items?.length)                              return apiError('Bill mein koi item nahi');
-    if (!['cash','online','udhaar'].includes(payment)) return apiError('Payment type galat');
-    if (payment === 'udhaar' && !customer?.trim())   return apiError('Credit ke liye customer naam zaroori');
+    if (!items?.length) return apiError('Bill mein koi item nahi');
+    if (!['cash', 'online', 'udhaar'].includes(payment)) return apiError('Payment type galat');
+    if (payment === 'udhaar' && !customer?.trim()) return apiError('Credit ke liye customer naam zaroori');
 
-    // Validate stock for all items first
+    // Validate stock
     for (const item of items) {
-      const r = await db.execute({ sql: 'SELECT stock FROM inventory WHERE id = ?', args: [item.item_id] });
-      if (!r.rows.length) return apiError(`Part nahi mila: ${item.item_name}`);
-      const stock = Number((r.rows[0] as Record<string,unknown>).stock);
-      if (stock < item.qty) return apiError(`${item.item_name} — sirf ${stock} stock bacha hai`);
+      const { data: inv } = await db.from('inventory').select('stock').eq('id', item.item_id).single();
+      if (!inv) return apiError(`Part nahi mila: ${item.item_name}`);
+      if (inv.stock < item.qty) return apiError(`${item.item_name} — sirf ${inv.stock} stock bacha hai`);
     }
 
-    const bill_no = genBillNo();
+    const bill_no  = genBillNo();
     const custName = customer?.trim() || 'Walk-in';
 
     // Insert bill
-    const billRes = await db.execute({
-      sql: `INSERT INTO bills (bill_no, customer, phone, payment, subtotal, discount, total, operator, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      args: [bill_no, custName, phone?.trim() || '', payment,
-             +subtotal, +discount, +total, operator?.trim() || '', notes?.trim() || ''],
-    });
-    const bill_id = Number(billRes.lastInsertRowid);
+    const { data: bill, error: billErr } = await db.from('bills').insert({
+      bill_no, customer: custName, phone: phone?.trim() || '', payment,
+      subtotal: +subtotal, discount: +discount, total: +total,
+      operator: operator?.trim() || '', notes: notes?.trim() || '',
+    }).select().single();
+    if (billErr) throw billErr;
 
-    // Insert items + deduct stock + insert sales records
+    // Insert items, deduct stock, insert sales
     for (const item of items) {
-      const invRow = await db.execute({ sql: 'SELECT buy_price FROM inventory WHERE id = ?', args: [item.item_id] });
-      const buy_price = Number((invRow.rows[0] as Record<string,unknown>).buy_price || 0);
+      const { data: inv } = await db.from('inventory').select('stock,buy_price').eq('id', item.item_id).single();
+      const buy_price = Number(inv?.buy_price || 0);
 
-      await db.batch([
-        // bill_items record
-        {
-          sql: `INSERT INTO bill_items (bill_id, item_id, item_name, qty, price, buy_price, amount)
-                VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          args: [bill_id, item.item_id, item.item_name, item.qty, item.price, buy_price, item.amount],
-        },
-        // deduct stock
-        { sql: 'UPDATE inventory SET stock = stock - ? WHERE id = ?', args: [item.qty, item.item_id] },
-        // sales record (for dashboard/history compatibility)
-        {
-          sql: `INSERT INTO sales (item_id, item_name, qty, amount, buy_price, payment, customer, phone, udhaar_paid, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          args: [item.item_id, item.item_name, item.qty, item.amount, buy_price,
-                 payment, custName, phone?.trim() || '',
-                 payment !== 'udhaar' ? 1 : 0, `Bill #${bill_no}`],
-        },
-      ], 'write');
+      await db.from('bill_items').insert({
+        bill_id: bill.id, item_id: item.item_id, item_name: item.item_name,
+        qty: item.qty, price: item.price, buy_price, amount: item.amount,
+      });
+      await db.from('inventory').update({ stock: (inv?.stock || 0) - item.qty }).eq('id', item.item_id);
+      await db.from('sales').insert({
+        item_id: item.item_id, item_name: item.item_name,
+        qty: item.qty, amount: item.amount, buy_price, payment,
+        customer: custName, phone: phone?.trim() || '',
+        udhaar_paid: payment !== 'udhaar',
+        notes: `Bill #${bill_no}`,
+      });
     }
 
-    return apiOk({ id: bill_id, bill_no }, 201);
+    return apiOk({ id: bill.id, bill_no }, 201);
   } catch (e) {
     console.error('[POST /api/bills]', e);
     return apiError('Bill save nahi hua', 500);
