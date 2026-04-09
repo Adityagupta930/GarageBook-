@@ -17,7 +17,8 @@ export async function GET(req: NextRequest) {
     const to    = searchParams.get('to');
     const limit = +(searchParams.get('limit') || 200);
 
-    let query = db.from('bills').select('*');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let query = db.from('bills').select('*') as any;
     if (from) query = query.gte('date', from);
     if (to)   query = query.lte('date', to + 'T23:59:59');
     query = query.order('date', { ascending: false }).limit(limit);
@@ -41,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     // Validate stock
     for (const item of items) {
-      const { data: inv } = await db.from('inventory').select('stock').eq('id', item.item_id).single();
+      const { data: inv } = await db.from('inventory').select('stock').eq('id', item.item_id).single() as { data: { stock: number } | null; error: unknown };
       if (!inv) return apiError(`Part nahi mila: ${item.item_name}`);
       if (inv.stock < item.qty) return apiError(`${item.item_name} — sirf ${inv.stock} stock bacha hai`);
     }
@@ -49,24 +50,23 @@ export async function POST(req: NextRequest) {
     const bill_no  = genBillNo();
     const custName = customer?.trim() || 'Walk-in';
 
-    // Insert bill
     const { data: bill, error: billErr } = await db.from('bills').insert({
       bill_no, customer: custName, phone: phone?.trim() || '', payment,
       subtotal: +subtotal, discount: +discount, total: +total,
       operator: operator?.trim() || '', notes: notes?.trim() || '',
-    }).select().single();
-    if (billErr) throw billErr;
+    }).select().single() as { data: { id: number } | null; error: unknown };
+    if (billErr || !bill) throw billErr;
 
-    // Insert items, deduct stock, insert sales
     for (const item of items) {
-      const { data: inv } = await db.from('inventory').select('stock,buy_price').eq('id', item.item_id).single();
+      const { data: inv } = await db.from('inventory').select('stock,buy_price').eq('id', item.item_id).single() as { data: { stock: number; buy_price: number } | null; error: unknown };
       const buy_price = Number(inv?.buy_price || 0);
+      const curStock  = Number(inv?.stock || 0);
 
       await db.from('bill_items').insert({
         bill_id: bill.id, item_id: item.item_id, item_name: item.item_name,
         qty: item.qty, price: item.price, buy_price, amount: item.amount,
       });
-      await db.from('inventory').update({ stock: (inv?.stock || 0) - item.qty }).eq('id', item.item_id);
+      await db.from('inventory').update({ stock: curStock - item.qty }).eq('id', item.item_id);
       await db.from('sales').insert({
         item_id: item.item_id, item_name: item.item_name,
         qty: item.qty, amount: item.amount, buy_price, payment,

@@ -20,9 +20,8 @@ export async function POST(req: NextRequest) {
     if (!qty || isNaN(+qty) || +qty <= 0) return apiError('Valid qty daalo');
     if (!amount || isNaN(+amount)) return apiError('Valid amount daalo');
 
-    // Restore stock if item_id given
     if (item_id) {
-      const { data: inv } = await db.from('inventory').select('stock').eq('id', item_id).single();
+      const { data: inv } = await db.from('inventory').select('stock').eq('id', item_id).single() as { data: { stock: number } | null; error: unknown };
       if (inv) await db.from('inventory').update({ stock: inv.stock + +qty }).eq('id', item_id);
     }
 
@@ -30,9 +29,9 @@ export async function POST(req: NextRequest) {
       sale_id: sale_id ?? null, item_id: item_id ?? null,
       item_name: item_name.trim(), qty: +qty, amount: +amount,
       reason: reason?.trim() || '',
-    }).select().single();
+    }).select().single() as { data: { id: number } | null; error: unknown };
     if (error) throw error;
-    return apiOk({ id: data.id }, 201);
+    return apiOk({ id: (data as { id: number }).id }, 201);
   } catch (e) {
     console.error('[POST /api/returns]', e);
     return apiError('Return darj karne mein error', 500);

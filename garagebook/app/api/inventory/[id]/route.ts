@@ -12,7 +12,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (body.action === 'addstock') {
       const qty = Number(body.qty);
       if (!qty || qty <= 0) return apiError('Valid qty daalo');
-      const { data: cur } = await db.from('inventory').select('stock').eq('id', id).single();
+      const { data: cur } = await db.from('inventory').select('stock').eq('id', id).single() as { data: { stock: number } | null; error: unknown };
       if (!cur) return apiError('Part nahi mila', 404);
       const { data, error } = await db.from('inventory')
         .update({ stock: cur.stock + qty })

@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     if (!['cash', 'online', 'udhaar'].includes(payment)) return apiError('Payment type galat hai');
     if (payment === 'udhaar' && !customer?.trim()) return apiError('Credit ke liye customer naam zaroori');
 
-    const { data: item, error: invErr } = await db.from('inventory').select('stock,buy_price').eq('id', item_id).single();
+    const { data: item, error: invErr } = await db.from('inventory').select('stock,buy_price').eq('id', item_id).single() as { data: { stock: number; buy_price: number } | null; error: unknown };
     if (invErr || !item) return apiError('Part nahi mila', 404);
     if (Number(item.stock) < +qty) return apiError(`Sirf ${item.stock} stock bacha hai`);
 
