@@ -5,7 +5,8 @@ import { apiError, apiOk } from '@/lib/utils';
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await db.execute({ sql: 'DELETE FROM expenses WHERE id = ?', args: [+id] });
+    const { error } = await db.from('expenses').delete().eq('id', id);
+    if (error) throw error;
     return apiOk({ ok: true });
   } catch (e) {
     console.error('[DELETE /api/expenses/[id]]', e);
