@@ -51,3 +51,7 @@ CLAUDE.md
 
 .vercel
 .env*.local
+
+# Capacitor
+/android
+/ios
