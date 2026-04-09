@@ -18,12 +18,12 @@ const titles: Record<string, { label: string; icon: string }> = {
 
 interface Props {
   onMenuClick: () => void;
-  role: Role;
-  setRole: (r: Role) => void;
   isOwner: boolean;
+  userName: string;
+  onLogout: () => void;
 }
 
-export default function Topbar({ onMenuClick, role, setRole, isOwner }: Props) {
+export default function Topbar({ onMenuClick, isOwner, userName, onLogout }: Props) {
   const path = usePathname();
   const [dark, setDark]           = useState(false);
   const [alertOpen, setAlertOpen] = useState(false);
@@ -152,19 +152,14 @@ export default function Topbar({ onMenuClick, role, setRole, isOwner }: Props) {
           {lang === 'en' ? 'हि' : 'EN'}
         </button>
 
-        {/* Role Switcher */}
-        <select
-          value={role}
-          onChange={e => setRole(e.target.value as Role)}
-          style={{
-            padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
-            border: '1px solid var(--border)', background: isOwner ? 'rgba(233,69,96,.1)' : 'var(--surface2)',
-            color: isOwner ? 'var(--primary)' : 'var(--text2)', cursor: 'pointer', outline: 'none',
-          }}
-          title="Switch role">
-          <option value="owner">👑 {t.owner}</option>
-          <option value="staff">👤 {t.staff}</option>
-        </select>
+        {/* Role Badge */}
+        <span style={{
+            padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
+            background: isOwner ? 'rgba(233,69,96,.1)' : 'var(--surface2)',
+            color: isOwner ? 'var(--primary)' : 'var(--text2)',
+          }}>
+          {isOwner ? `👑 ${userName.split(' ')[0] || 'Owner'}` : '👤 Staff'}
+        </span>
 
         {/* Dark mode */}
         <button className="icon-btn" onClick={toggleTheme} title={dark ? 'Light mode' : 'Dark mode'}>
@@ -173,16 +168,14 @@ export default function Topbar({ onMenuClick, role, setRole, isOwner }: Props) {
 
         <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
 
-        <div style={{
-          width: '32px', height: '32px', borderRadius: '50%',
-          background: isOwner ? 'var(--primary)' : '#64748b',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          color: '#fff', fontSize: '13px', fontWeight: 700,
-          cursor: 'pointer', flexShrink: 0,
-          transition: 'background .2s',
-        }} title={isOwner ? 'Owner' : 'Staff'}>
-          {isOwner ? 'O' : 'S'}
-        </div>
+        {/* Logout */}
+        <button
+          onClick={onLogout}
+          className="icon-btn"
+          title="Logout"
+          style={{ fontSize: '14px' }}>
+          🚪
+        </button>
       </div>
 
       {/* Click outside to close alert */}
