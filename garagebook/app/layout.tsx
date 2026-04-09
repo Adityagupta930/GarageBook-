@@ -5,16 +5,12 @@ import ShellClient from '@/components/ShellClient';
 import ToastContainer from '@/components/Toast';
 import SwRegister from '@/components/SwRegister';
 import { LangProvider } from '@/hooks/useLang';
-import { initDb } from '@/lib/db';
-
 const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
 export const metadata: Metadata = {
   title: 'Porwal Autoparts',
   description: 'Porwal Autoparts — Auto Parts Shop Manager',
 };
-
-initDb().catch(console.error);
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
