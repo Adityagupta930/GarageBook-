@@ -6,7 +6,7 @@ import { toast } from '@/components/Toast';
 import { Sparkline } from '@/components/Charts';
 import { fmtDate, fmtCurrency, todayStr, fuzzyMatch } from '@/lib/utils';
 import { listenSync } from '@/lib/sync';
-import { useRole } from '@/hooks/useRole';
+import { useAuth } from '@/hooks/useAuth';
 import { useDailyGoal } from '@/hooks/useDailyGoal';
 import type { Sale, InventoryItem } from '@/types';
 

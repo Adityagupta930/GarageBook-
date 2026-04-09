@@ -1,7 +1,6 @@
 'use client';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import type { Role } from '@/hooks/useRole';
 import { useLang } from '@/hooks/useLang';
 import type { InventoryItem } from '@/types';
 import InstallButton from '@/components/InstallButton';
