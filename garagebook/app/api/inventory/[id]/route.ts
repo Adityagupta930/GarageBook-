@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { apiError, apiOk } from '@/lib/utils';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const q = db as any;
 type Params = { params: Promise<{ id: string }> };
 
 export async function PUT(req: NextRequest, { params }: Params) {
@@ -12,11 +14,9 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (body.action === 'addstock') {
       const qty = Number(body.qty);
       if (!qty || qty <= 0) return apiError('Valid qty daalo');
-      const { data: cur } = await db.from('inventory').select('stock').eq('id', id).single() as { data: { stock: number } | null; error: unknown };
+      const { data: cur } = await q.from('inventory').select('stock').eq('id', id).single();
       if (!cur) return apiError('Part nahi mila', 404);
-      const { data, error } = await db.from('inventory')
-        .update({ stock: cur.stock + qty })
-        .eq('id', id).select().single();
+      const { data, error } = await q.from('inventory').update({ stock: cur.stock + qty }).eq('id', id).select().single();
       if (error) throw error;
       return apiOk(data);
     }
@@ -31,7 +31,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     if (sku       != null) updates.sku      = sku.trim();
     if (category  != null) updates.category = category.trim();
 
-    const { error } = await db.from('inventory').update(updates).eq('id', id);
+    const { error } = await q.from('inventory').update(updates).eq('id', id);
     if (error) throw error;
     return apiOk({ success: true });
   } catch (e) {
@@ -43,7 +43,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 export async function DELETE(_: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const { error } = await db.from('inventory').delete().eq('id', id);
+    const { error } = await q.from('inventory').delete().eq('id', id);
     if (error) throw error;
     return apiOk({ success: true });
   } catch (e) {

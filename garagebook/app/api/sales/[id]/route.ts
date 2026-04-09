@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { apiError, apiOk } from '@/lib/utils';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const q = db as any;
 type Params = { params: Promise<{ id: string }> };
 
 export async function PUT(req: NextRequest, { params }: Params) {
@@ -10,7 +12,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const body = await req.json();
 
     if (body.action === 'paid') {
-      const { error } = await db.from('sales').update({ udhaar_paid: true }).eq('id', id);
+      const { error } = await q.from('sales').update({ udhaar_paid: true }).eq('id', id);
       if (error) throw error;
       return apiOk({ success: true });
     }
@@ -30,7 +32,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
     };
     if (date) updates.date = date;
 
-    const { error } = await db.from('sales').update(updates).eq('id', id);
+    const { error } = await q.from('sales').update(updates).eq('id', id);
     if (error) throw error;
     return apiOk({ success: true });
   } catch (e) {
@@ -42,7 +44,7 @@ export async function PUT(req: NextRequest, { params }: Params) {
 export async function DELETE(_: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    const { error } = await db.from('sales').delete().eq('id', id);
+    const { error } = await q.from('sales').delete().eq('id', id);
     if (error) throw error;
     return apiOk({ success: true });
   } catch (e) {

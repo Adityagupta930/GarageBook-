@@ -2,9 +2,12 @@ import { NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { apiError, apiOk } from '@/lib/utils';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const q = db as any;
+
 export async function GET() {
   try {
-    const { data, error } = await db.from('returns').select('*').order('date', { ascending: false });
+    const { data, error } = await q.from('returns').select('*').order('date', { ascending: false });
     if (error) throw error;
     return apiOk(data);
   } catch (e) {
@@ -21,17 +24,17 @@ export async function POST(req: NextRequest) {
     if (!amount || isNaN(+amount)) return apiError('Valid amount daalo');
 
     if (item_id) {
-      const { data: inv } = await db.from('inventory').select('stock').eq('id', item_id).single() as { data: { stock: number } | null; error: unknown };
-      if (inv) await db.from('inventory').update({ stock: inv.stock + +qty }).eq('id', item_id);
+      const { data: inv } = await q.from('inventory').select('stock').eq('id', item_id).single();
+      if (inv) await q.from('inventory').update({ stock: inv.stock + +qty }).eq('id', item_id);
     }
 
-    const { data, error } = await db.from('returns').insert({
+    const { data, error } = await q.from('returns').insert({
       sale_id: sale_id ?? null, item_id: item_id ?? null,
       item_name: item_name.trim(), qty: +qty, amount: +amount,
       reason: reason?.trim() || '',
-    }).select().single() as { data: { id: number } | null; error: unknown };
+    }).select().single();
     if (error) throw error;
-    return apiOk({ id: (data as { id: number }).id }, 201);
+    return apiOk({ id: data.id }, 201);
   } catch (e) {
     console.error('[POST /api/returns]', e);
     return apiError('Return darj karne mein error', 500);

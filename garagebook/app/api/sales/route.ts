@@ -2,6 +2,9 @@ import { NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { apiError, apiOk } from '@/lib/utils';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const q = db as any;
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
@@ -10,7 +13,7 @@ export async function GET(req: NextRequest) {
     const payment = searchParams.get('payment');
     const limit   = searchParams.get('limit');
 
-    let query = db.from('sales').select('*');
+    let query = q.from('sales').select('*');
     if (from)    query = query.gte('date', from);
     if (to)      query = query.lte('date', to + 'T23:59:59');
     if (payment) query = query.eq('payment', payment);
@@ -35,16 +38,13 @@ export async function POST(req: NextRequest) {
     if (!['cash', 'online', 'udhaar'].includes(payment)) return apiError('Payment type galat hai');
     if (payment === 'udhaar' && !customer?.trim()) return apiError('Credit ke liye customer naam zaroori');
 
-    const { data: item, error: invErr } = await db.from('inventory').select('stock,buy_price').eq('id', item_id).single() as { data: { stock: number; buy_price: number } | null; error: unknown };
-    if (invErr || !item) return apiError('Part nahi mila', 404);
+    const { data: item } = await q.from('inventory').select('stock,buy_price').eq('id', item_id).single();
+    if (!item) return apiError('Part nahi mila', 404);
     if (Number(item.stock) < +qty) return apiError(`Sirf ${item.stock} stock bacha hai`);
 
-    // Deduct stock
-    const { error: stockErr } = await db.from('inventory').update({ stock: item.stock - +qty }).eq('id', item_id);
-    if (stockErr) throw stockErr;
+    await q.from('inventory').update({ stock: item.stock - +qty }).eq('id', item_id);
 
-    // Insert sale
-    const { data: sale, error: saleErr } = await db.from('sales').insert({
+    const { data: sale, error: saleErr } = await q.from('sales').insert({
       item_id, item_name: item_name.trim(), qty: +qty, amount: +amount,
       buy_price: item.buy_price, payment,
       customer: customer?.trim() || 'Walk-in',

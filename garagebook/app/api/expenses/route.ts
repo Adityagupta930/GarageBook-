@@ -2,13 +2,16 @@ import { NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { apiError, apiOk } from '@/lib/utils';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const q = db as any;
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = req.nextUrl;
     const from = searchParams.get('from');
     const to   = searchParams.get('to');
 
-    let query = db.from('expenses').select('*');
+    let query = q.from('expenses').select('*');
     if (from) query = query.gte('date', from);
     if (to)   query = query.lte('date', to + 'T23:59:59');
     query = query.order('date', { ascending: false });
@@ -28,7 +31,7 @@ export async function POST(req: NextRequest) {
     if (!title?.trim()) return apiError('Title zaroori hai');
     if (!amount || +amount <= 0) return apiError('Valid amount daalo');
 
-    const { data, error } = await db.from('expenses').insert({
+    const { data, error } = await q.from('expenses').insert({
       title: title.trim(), amount: +amount,
       category: category?.trim() || 'Other',
       note: note?.trim() || '',

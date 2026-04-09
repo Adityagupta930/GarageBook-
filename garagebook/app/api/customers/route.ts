@@ -2,9 +2,12 @@ import { NextRequest } from 'next/server';
 import db from '@/lib/db';
 import { apiError, apiOk } from '@/lib/utils';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const q = db as any;
+
 export async function GET() {
   try {
-    const { data, error } = await db.from('customers').select('*').order('name');
+    const { data, error } = await q.from('customers').select('*').order('name');
     if (error) throw error;
     return apiOk(data);
   } catch (e) {
@@ -18,11 +21,10 @@ export async function POST(req: NextRequest) {
     const { name, phone, address } = await req.json();
     if (!name?.trim()) return apiError('Customer naam zaroori hai');
 
-    const { data: exists } = await db.from('customers')
-      .select('id').eq('name', name.trim()).eq('phone', phone || '').maybeSingle();
+    const { data: exists } = await q.from('customers').select('id').eq('name', name.trim()).eq('phone', phone || '').maybeSingle();
     if (exists) return apiError('Customer pehle se exist karta hai', 409);
 
-    const { data, error } = await db.from('customers').insert({
+    const { data, error } = await q.from('customers').insert({
       name: name.trim(), phone: phone?.trim() || '', address: address?.trim() || '',
     }).select().single();
     if (error) throw error;
