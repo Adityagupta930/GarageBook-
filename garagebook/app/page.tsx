@@ -20,7 +20,7 @@ export default function Dashboard() {
   const [range, setRange]     = useState<Range>('today');
   const [tableSearch, setTableSearch] = useState('');
   const [goalInput, setGoalInput]     = useState('');
-  const { isOwner } = useRole();
+  const { isOwner } = useAuth();
   const { goal, setGoal } = useDailyGoal();
 
   const load = useCallback(async () => {

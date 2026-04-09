@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/components/Toast';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
 import ConfirmModal from '@/components/ConfirmModal';
-import { useRole } from '@/hooks/useRole';
+import { useAuth } from '@/hooks/useAuth';
 import { listenSync, broadcast } from '@/lib/sync';
 import type { InventoryItem } from '@/types';
 
