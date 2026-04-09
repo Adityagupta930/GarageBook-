@@ -10,27 +10,28 @@ export async function PUT(req: NextRequest, { params }: Params) {
     const body = await req.json();
 
     if (body.action === 'paid') {
-      const info = await db.execute({ sql: 'UPDATE sales SET udhaar_paid = 1 WHERE id = ?', args: [id] });
-      if (info.rowsAffected === 0) return apiError('Sale nahi mili', 404);
+      const { error } = await db.from('sales').update({ udhaar_paid: true }).eq('id', id);
+      if (error) throw error;
       return apiOk({ success: true });
     }
 
-    // Full edit
     const { item_name, qty, amount, payment, customer, phone, date } = body;
-    if (!item_name?.trim())                          return apiError('Item naam zaroori');
-    if (!qty || isNaN(+qty) || +qty <= 0)            return apiError('Valid qty daalo');
-    if (amount == null || isNaN(+amount))            return apiError('Valid amount daalo');
-    if (!['cash','online','udhaar'].includes(payment)) return apiError('Payment type galat');
-    if (payment === 'udhaar' && !customer?.trim())   return apiError('Credit ke liye customer naam zaroori');
+    if (!item_name?.trim()) return apiError('Item naam zaroori');
+    if (!qty || isNaN(+qty) || +qty <= 0) return apiError('Valid qty daalo');
+    if (amount == null || isNaN(+amount)) return apiError('Valid amount daalo');
+    if (!['cash', 'online', 'udhaar'].includes(payment)) return apiError('Payment type galat');
+    if (payment === 'udhaar' && !customer?.trim()) return apiError('Credit ke liye customer naam zaroori');
 
-    const info = await db.execute({
-      sql: `UPDATE sales SET item_name=?, qty=?, amount=?, payment=?, customer=?, phone=?,
-            udhaar_paid=?, ${date ? 'date=?,' : ''} id=id WHERE id=?`,
-      args: date
-        ? [item_name.trim(), +qty, +amount, payment, customer?.trim()||'Walk-in', phone?.trim()||'', payment!=='udhaar'?1:0, date, id]
-        : [item_name.trim(), +qty, +amount, payment, customer?.trim()||'Walk-in', phone?.trim()||'', payment!=='udhaar'?1:0, id],
-    });
-    if (info.rowsAffected === 0) return apiError('Sale nahi mili', 404);
+    const updates: Record<string, unknown> = {
+      item_name: item_name.trim(), qty: +qty, amount: +amount,
+      payment, customer: customer?.trim() || 'Walk-in',
+      phone: phone?.trim() || '',
+      udhaar_paid: payment !== 'udhaar',
+    };
+    if (date) updates.date = date;
+
+    const { error } = await db.from('sales').update(updates).eq('id', id);
+    if (error) throw error;
     return apiOk({ success: true });
   } catch (e) {
     console.error('[PUT /api/sales/:id]', e);
@@ -38,10 +39,11 @@ export async function PUT(req: NextRequest, { params }: Params) {
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: Params) {
+export async function DELETE(_: NextRequest, { params }: Params) {
   try {
     const { id } = await params;
-    await db.execute({ sql: 'DELETE FROM sales WHERE id = ?', args: [id] });
+    const { error } = await db.from('sales').delete().eq('id', id);
+    if (error) throw error;
     return apiOk({ success: true });
   } catch (e) {
     console.error('[DELETE /api/sales/:id]', e);
