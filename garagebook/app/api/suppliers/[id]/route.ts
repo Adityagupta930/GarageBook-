@@ -7,10 +7,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const { id } = await params;
     const { name, phone, address, company, note } = await req.json();
     if (!name?.trim()) return apiError('Naam zaroori hai');
-    await db.execute({
-      sql: 'UPDATE suppliers SET name=?, phone=?, address=?, company=?, note=? WHERE id=?',
-      args: [name.trim(), phone?.trim() || '', address?.trim() || '', company?.trim() || '', note?.trim() || '', +id],
-    });
+    const { error } = await db.from('suppliers').update({
+      name: name.trim(), phone: phone?.trim() || '',
+      address: address?.trim() || '', company: company?.trim() || '',
+      note: note?.trim() || '',
+    }).eq('id', id);
+    if (error) throw error;
     return apiOk({ ok: true });
   } catch (e) {
     console.error('[PUT /api/suppliers/[id]]', e);
@@ -21,7 +23,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 export async function DELETE(_: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await db.execute({ sql: 'DELETE FROM suppliers WHERE id = ?', args: [+id] });
+    const { error } = await db.from('suppliers').delete().eq('id', id);
+    if (error) throw error;
     return apiOk({ ok: true });
   } catch (e) {
     console.error('[DELETE /api/suppliers/[id]]', e);
