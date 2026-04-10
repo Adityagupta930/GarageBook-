@@ -22,7 +22,7 @@ export default function BillPage() {
   const [qty, setQty]           = useState('1');
   const [customer, setCustomer] = useState('');
   const [phone, setPhone]       = useState('');
-  const [payment, setPayment]     = useState<'cash' | 'online' | 'udhaar'>('cash');
+  const [payment, setPayment]     = useState<'cash' | 'online' | 'udhaar' | 'split'>('cash');
   const [splitOnline, setSplitOnline] = useState('');  // split payment: online portion
   const [discount, setDiscount]     = useState('0');
   const [partialPaid, setPartialPaid] = useState('');
