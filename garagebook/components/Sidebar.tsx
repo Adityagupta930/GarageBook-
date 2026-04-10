@@ -15,6 +15,7 @@ const links: NavLink[] = [
   { href: '/credit',    icon: '💳', labelKey: 'credit',    ownerOnly: true  },
   { href: '/history',   icon: '🕓', labelKey: 'history',   ownerOnly: true  },
   { href: '/admin',     icon: '📊', labelKey: 'reports',   ownerOnly: true  },
+  { href: '/eod',       icon: '📅', labelKey: 'eod',       ownerOnly: true  },
 ];
 
 const shortcuts: Record<string, string> = {
