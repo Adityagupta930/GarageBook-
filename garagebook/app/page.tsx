@@ -240,7 +240,7 @@ export default function Dashboard() {
       </div>
 
       {/* Stat Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+      <div className="stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         <StatCard label="Revenue" value={fmtCurrency(income)} color="green"
           sub={`${range === 'today' ? 'Today' : range === 'week' ? 'Last 7 days' : 'Last 30 days'}${
             range === 'today' && vsYesterday !== null
@@ -371,7 +371,7 @@ export default function Dashboard() {
       )}
 
       {/* Table */}
-      <div style={{ overflowX: 'auto' }}>
+      <div className="gb-table-wrap">
         <table className="gb-table">
           <thead>
             <tr><th>Part</th><th>Qty</th><th>Amount</th><th>Payment</th><th>Customer</th><th>Date</th></tr>

@@ -181,7 +181,7 @@ export default function Topbar({ onMenuClick, isOwner, userName, onLogout }: Pro
         </span>
 
         {/* Online/Offline indicator */}
-        <span title={online ? 'Online' : 'Offline — sales queue mein jayenge'} style={{
+        <span title={online ? 'Online' : 'Offline'} style={{
           width: '8px', height: '8px', borderRadius: '50%',
           background: online ? '#22c55e' : '#ef4444',
           display: 'inline-block', flexShrink: 0,
@@ -246,37 +246,35 @@ export default function Topbar({ onMenuClick, isOwner, userName, onLogout }: Pro
         {/* Install App Button */}
         <InstallButton />
 
-        {/* Lang toggle */}
+        {/* Lang toggle — hide on mobile */}
         <button
           onClick={() => setLang(lang === 'en' ? 'hi' : 'en')}
           className="icon-btn"
           title={lang === 'en' ? 'Hindi mein switch karo' : 'Switch to English'}
-          style={{ fontSize: '12px', fontWeight: 700, width: 'auto', padding: '0 8px' }}>
+          style={{ fontSize: '12px', fontWeight: 700, width: 'auto', padding: '0 8px', display: 'none' }}
+          id="lang-btn">
           {lang === 'en' ? 'हि' : 'EN'}
         </button>
 
-        {/* Role Badge */}
+        {/* Role Badge — hide on mobile */}
         <span style={{
             padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: 600,
             background: isOwner ? 'rgba(233,69,96,.1)' : 'var(--surface2)',
             color: isOwner ? 'var(--primary)' : 'var(--text2)',
-          }}>
+          }}
+          className="role-badge">
           {isOwner ? `👑 ${userName.split(' ')[0] || 'Owner'}` : '👤 Staff'}
         </span>
 
         {/* Dark mode */}
-        <button className="icon-btn" onClick={toggleTheme} title={dark ? 'Light mode' : 'Dark mode'}>
+        <button className="icon-btn keep-mobile" onClick={toggleTheme} title={dark ? 'Light mode' : 'Dark mode'}>
           {dark ? '☀️' : '🌙'}
         </button>
 
         <div style={{ width: '1px', height: '20px', background: 'var(--border)' }} />
 
         {/* Logout */}
-        <button
-          onClick={onLogout}
-          className="icon-btn"
-          title="Logout"
-          style={{ fontSize: '14px' }}>
+        <button onClick={onLogout} className="icon-btn keep-mobile" title="Logout" style={{ fontSize: '14px' }}>
           🚪
         </button>
       </div>

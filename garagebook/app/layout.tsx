@@ -16,8 +16,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning className={inter.className}>
       <head>
+        {/* ── Viewport — mobile ke liye sabse zaroori ── */}
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#e94560" />
+        <meta name="theme-color" content="#0d1117" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="Porwal" />

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { useAuth } from '@/hooks/useAuth';
@@ -12,18 +13,28 @@ import { toast } from '@/components/Toast';
 
 const PUBLIC_PATHS = ['/login', '/signup'];
 
+const BOTTOM_NAV = [
+  { href: '/',          icon: '▦',  label: 'Home'      },
+  { href: '/sale',      icon: '🛒', label: 'Sale'      },
+  { href: '/inventory', icon: '📦', label: 'Stock'     },
+  { href: '/bill',      icon: '🧾', label: 'Bill'      },
+  { href: '/credit',    icon: '💳', label: 'Credit'    },
+];
+
 export default function ShellClient({ children }: { children: React.ReactNode }) {
   const [open, setOpen]   = useState(false);
   const router            = useRouter();
   const pathname          = usePathname();
   const { user, loading, signOut, isOwner } = useAuth();
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!loading && !user && !PUBLIC_PATHS.includes(pathname)) {
       router.replace('/login');
     }
   }, [user, loading, pathname, router]);
+
+  // Close sidebar on route change (mobile)
+  useEffect(() => { setOpen(false); }, [pathname]);
 
   const handleLogout = useCallback(async () => {
     await signOut();
@@ -36,18 +47,11 @@ export default function ShellClient({ children }: { children: React.ReactNode })
   useErrorLogger();
   useOfflineSync();
 
-  // Public pages — no shell
-  if (PUBLIC_PATHS.includes(pathname)) {
-    return <>{children}</>;
-  }
+  if (PUBLIC_PATHS.includes(pathname)) return <>{children}</>;
 
-  // Loading state
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: '#0d1117',
-      }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0d1117' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ fontSize: '32px', marginBottom: '12px' }}>🔧</div>
           <div style={{ color: '#8b949e', fontSize: '14px' }}>Loading...</div>
@@ -56,8 +60,9 @@ export default function ShellClient({ children }: { children: React.ReactNode })
     );
   }
 
-  // Not logged in — show nothing (redirect happening)
   if (!user) return null;
+
+  const bottomLinks = isOwner ? BOTTOM_NAV : BOTTOM_NAV.filter(l => l.href !== '/credit');
 
   return (
     <div className="app-shell">
@@ -72,6 +77,16 @@ export default function ShellClient({ children }: { children: React.ReactNode })
         />
         <main className="page-content">{children}</main>
       </div>
+
+      {/* Bottom Navigation — mobile only */}
+      <nav className="bottom-nav">
+        {bottomLinks.map(l => (
+          <Link key={l.href} href={l.href} className={`bottom-nav-item${pathname === l.href ? ' active' : ''}`}>
+            <span className="bn-icon">{l.icon}</span>
+            <span>{l.label}</span>
+          </Link>
+        ))}
+      </nav>
     </div>
   );
 }
