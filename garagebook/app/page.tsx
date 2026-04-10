@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import StatCard from '@/components/StatCard';
 import { LoadingRows, ErrorRow, EmptyRow } from '@/components/TableStates';
 import { toast } from '@/components/Toast';
@@ -93,7 +94,12 @@ export default function Dashboard() {
   const [tableSearch, setTableSearch] = useState('');
   const [goalInput, setGoalInput]     = useState('');
   const { isOwner } = useAuth();
+  const router = useRouter();
   const { goal, setGoal } = useDailyGoal();
+
+  useEffect(() => {
+    if (!isOwner) router.replace('/sale');
+  }, [isOwner, router]);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -193,7 +199,7 @@ export default function Dashboard() {
   })();
   const vsYesterday = yesterday > 0 ? ((income - yesterday) / yesterday * 100) : null;
 
-  if (!isOwner) return <EmployeeDashboard sales={sales} loading={loading} error={error} />;
+  if (!isOwner) return null;
 
   function exportCSV() {
     if (!sales.length) return toast('Koi data nahi', 'info');
