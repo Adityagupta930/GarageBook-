@@ -73,10 +73,12 @@ export interface Bill {
   bill_no: string;
   customer: string;
   phone: string;
-  payment: 'cash' | 'online' | 'udhaar';
+  payment: 'cash' | 'online' | 'udhaar' | 'split';
   subtotal: number;
   discount: number;
   total: number;
+  partial_paid: number;
+  balance: number;
   operator: string;
   notes: string;
   date: string;
