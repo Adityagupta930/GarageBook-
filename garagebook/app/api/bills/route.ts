@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     const { customer, phone, payment, subtotal, discount, total, operator, notes, items, partial_paid } = await req.json();
 
     if (!items?.length) return apiError('Bill mein koi item nahi');
-    if (!['cash', 'online', 'udhaar'].includes(payment)) return apiError('Payment type galat');
+    if (!['cash', 'online', 'udhaar', 'split'].includes(payment)) return apiError('Payment type galat');
     if (payment === 'udhaar' && !customer?.trim()) return apiError('Credit ke liye customer naam zaroori');
 
     for (const item of items) {
