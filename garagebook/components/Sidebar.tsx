@@ -6,7 +6,7 @@ import { useLang } from '@/hooks/useLang';
 interface NavLink { href: string; icon: string; labelKey: keyof ReturnType<typeof useLang>['t']; ownerOnly: boolean; }
 
 const links: NavLink[] = [
-  { href: '/',          icon: '▦',  labelKey: 'dashboard', ownerOnly: false },
+  { href: '/',          icon: '▦',  labelKey: 'dashboard', ownerOnly: true  },
   { href: '/inventory', icon: '📦', labelKey: 'products',  ownerOnly: false },
   { href: '/sale',      icon: '🛒', labelKey: 'newSale',   ownerOnly: false },
   { href: '/bill',      icon: '🧾', labelKey: 'bill',      ownerOnly: false },
