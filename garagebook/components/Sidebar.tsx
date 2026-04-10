@@ -10,7 +10,9 @@ const links: NavLink[] = [
   { href: '/inventory', icon: '📦', labelKey: 'products',  ownerOnly: false },
   { href: '/sale',      icon: '🛒', labelKey: 'newSale',   ownerOnly: false },
   { href: '/bill',      icon: '🧾', labelKey: 'bill',      ownerOnly: false },
-  { href: '/credit',    icon: '📋', labelKey: 'credit',    ownerOnly: true  },
+  { href: '/bills',     icon: '📋', labelKey: 'billHistory', ownerOnly: true },
+  { href: '/customers', icon: '👥', labelKey: 'customers', ownerOnly: true  },
+  { href: '/credit',    icon: '💳', labelKey: 'credit',    ownerOnly: true  },
   { href: '/history',   icon: '🕓', labelKey: 'history',   ownerOnly: true  },
   { href: '/admin',     icon: '📊', labelKey: 'reports',   ownerOnly: true  },
 ];
