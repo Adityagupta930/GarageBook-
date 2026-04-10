@@ -199,6 +199,7 @@ export default function Dashboard() {
   })();
   const vsYesterday = yesterday > 0 ? ((income - yesterday) / yesterday * 100) : null;
 
+  if (authLoading) return null;
   if (!isOwner) return null;
 
   function exportCSV() {
