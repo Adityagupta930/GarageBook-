@@ -8,6 +8,7 @@ import { fmtDate, fmtCurrency, todayStr, fuzzyMatch } from '@/lib/utils';
 import { listenSync } from '@/lib/sync';
 import { useAuth } from '@/hooks/useAuth';
 import { useDailyGoal } from '@/hooks/useDailyGoal';
+import { useLowStockNotification } from '@/hooks/useLowStockNotification';
 import type { Sale, InventoryItem } from '@/types';
 
 type Range = 'today' | 'week' | 'month';
@@ -107,6 +108,7 @@ export default function Dashboard() {
   if (credit > 5000) insights.push({ icon: '💸', msg: `₹${credit.toFixed(0)} udhaar pending — collect karo`, color: '#7c3aed' });
 
   const reorderItems = inv.filter(i => Number(i.stock) <= 3).sort((a, b) => Number(a.stock) - Number(b.stock));
+  useLowStockNotification(reorderItems);
   const goalPct   = goal > 0 ? Math.min(100, (income / goal) * 100) : 0;
   const goalColor = goalPct >= 100 ? '#16a34a' : goalPct >= 60 ? '#f97316' : '#e94560';
 
