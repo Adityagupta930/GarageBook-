@@ -93,13 +93,13 @@ export default function Dashboard() {
   const [range, setRange]     = useState<Range>('today');
   const [tableSearch, setTableSearch] = useState('');
   const [goalInput, setGoalInput]     = useState('');
-  const { isOwner } = useAuth();
+  const { isOwner, loading: authLoading } = useAuth();
   const router = useRouter();
   const { goal, setGoal } = useDailyGoal();
 
   useEffect(() => {
-    if (!isOwner) router.replace('/sale');
-  }, [isOwner, router]);
+    if (!authLoading && !isOwner) router.replace('/sale');
+  }, [isOwner, authLoading, router]);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
