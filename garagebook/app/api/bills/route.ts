@@ -5,12 +5,11 @@ import { apiError, apiOk } from '@/lib/utils';
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const q = db as any;
 
-function genBillNo(): string {
-  const now = new Date();
-  const d = now.toLocaleDateString('en-CA').replace(/-/g, '');
-  const t = String(now.getHours()).padStart(2, '0') + String(now.getMinutes()).padStart(2, '0');
-  const r = String(Math.floor(Math.random() * 100)).padStart(2, '0');
-  return `PA-${d}-${t}${r}`;
+async function genBillNo(): Promise<string> {
+  const { data } = await q.from('bills').select('bill_no').like('bill_no', 'PA-%').order('id', { ascending: false }).limit(1);
+  const last = data?.[0]?.bill_no;
+  const num  = last ? (parseInt(last.split('-')[1] || '0', 10) + 1) : 1;
+  return `PA-${String(num).padStart(4, '0')}`;
 }
 
 export async function GET(req: NextRequest) {
@@ -36,7 +35,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { customer, phone, payment, subtotal, discount, total, operator, notes, items } = await req.json();
+    const { customer, phone, payment, subtotal, discount, total, operator, notes, items, partial_paid } = await req.json();
 
     if (!items?.length) return apiError('Bill mein koi item nahi');
     if (!['cash', 'online', 'udhaar'].includes(payment)) return apiError('Payment type galat');
@@ -48,12 +47,15 @@ export async function POST(req: NextRequest) {
       if (inv.stock < item.qty) return apiError(`${item.item_name} — sirf ${inv.stock} stock bacha hai`);
     }
 
-    const bill_no  = genBillNo();
+    const bill_no  = await genBillNo();
     const custName = customer?.trim() || 'Walk-in';
+    const paidAmt  = partial_paid !== undefined ? +partial_paid : +total;
+    const balance  = Math.max(0, +total - paidAmt);
 
     const { data: bill, error: billErr } = await q.from('bills').insert({
       bill_no, customer: custName, phone: phone?.trim() || '', payment,
       subtotal: +subtotal, discount: +discount, total: +total,
+      partial_paid: paidAmt, balance,
       operator: operator?.trim() || '', notes: notes?.trim() || '',
     }).select().single();
     if (billErr || !bill) throw billErr;
