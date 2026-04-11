@@ -4,17 +4,15 @@ const config: CapacitorConfig = {
   appId: 'com.porwal.autoparts',
   appName: 'Porwal Autoparts',
   webDir: 'out',
-  // Deployed Vercel URL use karo — API routes wahan se serve hongi
-  // Isse static export mein API routes ki zaroorat nahi
   server: {
-    url: 'https://garage-book-app.vercel.app', // ← apna actual Vercel URL yahan daalo
+    url: 'https://garage-book-app.vercel.app',
     cleartext: false,
+    androidScheme: 'https',
   },
   android: {
-    buildOptions: {
-      keystorePath: undefined,
-      keystoreAlias: undefined,
-    },
+    allowMixedContent: false,
+    captureInput: true,
+    webContentsDebuggingEnabled: false,
   },
   plugins: {
     StatusBar: {
