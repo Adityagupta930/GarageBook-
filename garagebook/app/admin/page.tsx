@@ -8,7 +8,7 @@ import { DailyBarChart, TopPartsChart } from '@/components/Charts';
 import ConfirmModal from '@/components/ConfirmModal';
 import { useAuth } from '@/hooks/useAuth';
 import { broadcast } from '@/lib/sync';
-import { getErrorLog, clearErrorLog } from '@/hooks/useErrorLogger';
+import { getErrorLog, clearErrorLog, getActivityLog, clearActivityLog, clearAllLogs } from '@/hooks/useErrorLogger';
 
 type Tab = 'reports' | 'customers' | 'returns' | 'sales' | 'bills' | 'errorlog';
 
@@ -39,7 +39,9 @@ export default function AdminPage() {
   const [billLoading, setBillLoading] = useState(false);
   const [confirmBillId, setConfirmBillId] = useState<number | null>(null);
   const { isOwner } = useAuth();
-  const [errorLog, setErrorLog] = useState(() => getErrorLog());
+  const [errorLog, setErrorLog]       = useState(() => getErrorLog());
+  const [activityLog, setActivityLog] = useState(() => getActivityLog());
+  const [logTab, setLogTab]           = useState<'errors' | 'activity'>('errors');
 
   const loadCustomers = useCallback(async () => {
     setCLoading(true);
@@ -561,29 +563,94 @@ export default function AdminPage() {
       {/* ERROR LOG */}
       {tab === 'errorlog' && isOwner && (
         <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '13px', color: 'var(--text2)' }}>{errorLog.length} errors logged</span>
-            <button className="btn-gray text-sm" onClick={() => { clearErrorLog(); setErrorLog([]); toast('Log cleared', 'info'); }}>
-              🗑️ Clear Log
-            </button>
-          </div>
-          {errorLog.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text3)', fontSize: '14px' }}>✅ Koi error nahi</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {errorLog.map((e, i) => (
-                <div key={i} style={{
-                  background: 'var(--surface)', border: '1px solid #fca5a5',
-                  borderRadius: '8px', padding: '10px 14px', fontSize: '12px',
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ color: '#dc2626', fontWeight: 600 }}>{e.msg}</span>
-                    <span style={{ color: 'var(--text3)' }}>{e.url} · {new Date(e.ts).toLocaleTimeString()}</span>
-                  </div>
-                  {e.stack && <pre style={{ color: 'var(--text3)', fontSize: '11px', overflow: 'auto', maxHeight: '80px', margin: 0 }}>{e.stack.split('\n').slice(0, 3).join('\n')}</pre>}
-                </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+            {/* Sub tabs */}
+            <div style={{ display: 'flex', gap: '6px', background: 'var(--surface2)', border: '1px solid var(--border)', borderRadius: '8px', padding: '3px' }}>
+              {(['errors', 'activity'] as const).map(lt => (
+                <button key={lt} onClick={() => setLogTab(lt)}
+                  style={{ padding: '4px 14px', borderRadius: '6px', fontSize: '12px', fontWeight: 600, cursor: 'pointer', border: 'none', background: logTab === lt ? 'var(--primary)' : 'transparent', color: logTab === lt ? '#fff' : 'var(--text2)' }}>
+                  {lt === 'errors' ? `🔴 Errors (${errorLog.length})` : `📋 Activity (${activityLog.length})`}
+                </button>
               ))}
             </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button className="btn-gray" style={{ fontSize: '12px', padding: '5px 10px' }}
+                onClick={() => { setErrorLog(getErrorLog()); setActivityLog(getActivityLog()); toast('Refreshed', 'info'); }}>↻ Refresh</button>
+              <button className="btn-gray" style={{ fontSize: '12px', padding: '5px 10px' }}
+                onClick={() => { clearAllLogs(); setErrorLog([]); setActivityLog([]); toast('All logs cleared', 'info'); }}>🗑️ Clear All</button>
+            </div>
+          </div>
+
+          {/* ERRORS */}
+          {logTab === 'errors' && (
+            errorLog.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text3)' }}>✅ Koi error nahi</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {errorLog.map((e, i) => (
+                  <div key={i} style={{ background: 'var(--surface)', border: '1px solid #fca5a5', borderRadius: '8px', padding: '12px 14px', fontSize: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
+                      <span style={{ color: '#dc2626', fontWeight: 700 }}>{e.msg}</span>
+                      <div style={{ display: 'flex', gap: '8px', fontSize: '11px', color: 'var(--text3)' }}>
+                        <span>📍 {e.url}</span>
+                        <span>🕐 {new Date(e.ts).toLocaleString('en-IN')}</span>
+                      </div>
+                    </div>
+                    {e.details && (
+                      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                        {Object.entries(e.details).map(([k, v]) => (
+                          <span key={k} style={{ fontSize: '10px', background: 'var(--surface2)', border: '1px solid var(--border)', padding: '1px 6px', borderRadius: '4px', color: 'var(--text2)' }}>
+                            {k}: <b>{String(v)}</b>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {e.stack && (
+                      <pre style={{ color: 'var(--text3)', fontSize: '10px', overflow: 'auto', maxHeight: '80px', margin: 0, marginTop: '4px', background: 'var(--surface2)', padding: '6px', borderRadius: '4px' }}>
+                        {e.stack.split('\n').slice(0, 4).join('\n')}
+                      </pre>
+                    )}
+                    {e.userAgent && <div style={{ fontSize: '10px', color: 'var(--text3)', marginTop: '4px' }}>📱 {e.userAgent}</div>}
+                  </div>
+                ))}
+              </div>
+            )
+          )}
+
+          {/* ACTIVITY */}
+          {logTab === 'activity' && (
+            activityLog.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '32px', color: 'var(--text3)' }}>Koi activity nahi</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {activityLog.map((e, i) => {
+                  const color = e.level === 'api' ? '#2563eb' : e.level === 'action' ? '#16a34a' : e.level === 'perf' ? '#f97316' : e.level === 'warn' ? '#d97706' : 'var(--text2)';
+                  const icon  = e.level === 'api' ? '🌐' : e.level === 'action' ? '✅' : e.level === 'perf' ? '⚡' : e.level === 'warn' ? '⚠️' : 'ℹ️';
+                  return (
+                    <div key={i} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '6px', padding: '8px 12px', fontSize: '12px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                      <span>{icon}</span>
+                      <div style={{ flex: 1 }}>
+                        <span style={{ color, fontWeight: 600 }}>{e.msg}</span>
+                        {e.duration !== undefined && <span style={{ marginLeft: '8px', fontSize: '11px', color: e.duration > 1000 ? '#f97316' : 'var(--text3)' }}>{e.duration}ms</span>}
+                        {e.details && (
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '3px' }}>
+                            {Object.entries(e.details).map(([k, v]) => (
+                              <span key={k} style={{ fontSize: '10px', background: 'var(--surface2)', padding: '1px 5px', borderRadius: '3px', color: 'var(--text3)' }}>
+                                {k}: <b style={{ color: 'var(--text2)' }}>{String(v)}</b>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        <div>{e.url}</div>
+                        <div>{new Date(e.ts).toLocaleTimeString('en-IN')}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )
           )}
         </div>
       )}
